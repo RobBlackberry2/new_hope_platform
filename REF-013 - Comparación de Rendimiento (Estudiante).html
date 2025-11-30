@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="es">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>REF-013 - Comparación de Rendimiento (Estudiante)</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="admin-container">
+        <aside class="sidebar">
+            <div class="brand">
+                <div class="logo">NHS</div>
+                <div>
+                    <div style="font-weight:700">New Hope School</div>
+                    <div style="font-size:12px;color:var(--muted)">Portal Estudiantil</div>
+                </div>
+            </div>
+            <nav>
+                <a href="Elr-001-clase-virtual.html"><span>📚</span> Mis Clases</a>
+                <a href="REF-012 - Visualización de Notas (Estudiante).html" class="active"><span>📊</span> Reportes</a>
+                <a href="#"><span>📅</span> Calendario</a>
+                <a href="index.html"><span>🏠</span> Volver al Inicio</a>
+            </nav>
+        </aside>
+
+        <main class="admin-content">
+            <header>
+                <div>
+                    <h1>Mi Progreso</h1>
+                    <p class="lead">Compara tu rendimiento entre periodos.</p>
+                </div>
+                <div>
+                    <a href="REF-012 - Visualización de Notas (Estudiante).html" class="cta"
+                        style="background:transparent;border:1px solid var(--glass-border);color:var(--muted)">
+                        Volver a Notas
+                    </a>
+                </div>
+            </header>
+
+            <section class="filters">
+                <div>
+                    <label>Periodo A</label>
+                    <select>
+                        <option>I Trimestre 2025</option>
+                    </select>
+                </div>
+                <div>
+                    <label>Periodo B</label>
+                    <select>
+                        <option>II Trimestre 2025</option>
+                    </select>
+                </div>
+                <div style="display:flex;align-items:flex-end">
+                    <button style="width:100%">Comparar</button>
+                </div>
+            </section>
+
+            <div class="card">
+                <h3>Evolución del Promedio</h3>
+                <div class="chart-container">
+                    <div class="bar" style="height: 88%; background:var(--accent-2)" data-value="88">
+                        <span class="bar-label">I Trimestre</span>
+                    </div>
+                    <div class="bar" style="height: 92%; background:var(--accent)" data-value="92">
+                        <span class="bar-label">II Trimestre</span>
+                    </div>
+                </div>
+            </div>
+
+            <div style="margin-top:20px;display:grid;grid-template-columns:1fr 1fr;gap:20px">
+                <div class="card">
+                    <h3>Mejoras Destacadas</h3>
+                    <div style="margin-top:10px">
+                        <div
+                            style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--glass-border)">
+                            <span>Matemáticas</span>
+                            <strong style="color:var(--success)">+5 pts</strong>
+                        </div>
+                        <div
+                            style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--glass-border)">
+                            <span>Ciencias</span>
+                            <strong style="color:var(--success)">+3 pts</strong>
+                        </div>
+                    </div>
+                </div>
+                <div class="card">
+                    <h3>Áreas de Oportunidad</h3>
+                    <div style="margin-top:10px">
+                        <div
+                            style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--glass-border)">
+                            <span>Español</span>
+                            <strong style="color:var(--warning)">-2 pts</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</body>
+
+</html>

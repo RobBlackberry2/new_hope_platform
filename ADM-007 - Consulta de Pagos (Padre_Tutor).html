@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="es">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ADM-007 - Consulta de Pagos</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="admin-container">
+        <aside class="sidebar">
+            <div class="brand">
+                <div class="logo">NHS</div>
+                <div>
+                    <div style="font-weight:700">New Hope School</div>
+                    <div style="font-size:12px;color:var(--muted)">Administración</div>
+                </div>
+            </div>
+            <nav>
+                <div
+                    style="font-size:11px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;font-weight:800;letter-spacing:0.5px">
+                    Módulo Administrativo</div>
+                <a href="ADM-002 - Consulta de Lista de Estudiantes.html">
+                    <span>👥</span> Gestión Estudiantes
+                </a>
+                <a href="ADM-007 - Consulta de Pagos (Padre_Tutor).html" class="active">
+                    <span>💳</span> Gestión Pagos
+                </a>
+                <a href="REF-002 - Generación de Reportes Filtrados.html">
+                    <span>📊</span> Reportes
+                </a>
+
+                <div style="height:12px"></div>
+                <div
+                    style="font-size:11px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;font-weight:800;letter-spacing:0.5px">
+                    Navegación Principal</div>
+                <a href="index.html"><span>🏠</span> Inicio</a>
+                <a href="REF-006 - Reportes de Grupo (Docente).html"><span>👨‍🏫</span> Docentes</a>
+                <a href="REF-009 - Consulta Individual (Padre de Familia).html"><span>👨‍👩‍👧‍👦</span> Padres</a>
+                <a href="REF-012 - Visualización de Notas (Estudiante).html"><span>🎓</span> Estudiantes</a>
+                <a href="Elr-001-clase-virtual.html"><span>💻</span> E-Learning</a>
+            </nav>
+        </aside>
+
+        <main class="admin-content">
+            <header>
+                <div>
+                    <h1>Gestión de Pagos</h1>
+                    <p class="lead">Historial de pagos y registro de nuevas transacciones.</p>
+                </div>
+                <div>
+                    <a href="ADM-006 - Registro de Pagos (Recepción).html" class="cta">
+                        <span>+</span> Registrar Pago
+                    </a>
+                </div>
+            </header>
+
+            <section class="filters">
+                <div>
+                    <label>Estudiante / ID</label>
+                    <input type="text" placeholder="Buscar..." />
+                </div>
+                <div>
+                    <label>Fecha Desde</label>
+                    <input type="date" />
+                </div>
+                <div>
+                    <label>Fecha Hasta</label>
+                    <input type="date" />
+                </div>
+                <div>
+                    <label>Estado</label>
+                    <select>
+                        <option value="">Todos</option>
+                        <option>Aprobado</option>
+                        <option>Pendiente</option>
+                        <option>Rechazado</option>
+                    </select>
+                </div>
+                <div style="display:flex;align-items:flex-end">
+                    <button style="width:100%">Filtrar</button>
+                </div>
+            </section>
+
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Estudiante</th>
+                            <th>Concepto</th>
+                            <th>Monto</th>
+                            <th>Método</th>
+                            <th>Estado</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>2025-11-28</td>
+                            <td>Ana María López</td>
+                            <td>Mensualidad Noviembre</td>
+                            <td>₡125,000</td>
+                            <td>Transferencia</td>
+                            <td><span class="badge success">Aprobado</span></td>
+                            <td>
+                                <a href="ADM-008 - Modificación de Registro de Pago.html"
+                                    style="font-weight:700;font-size:13px">Editar</a>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>2025-11-27</td>
+                            <td>Carlos Rodríguez</td>
+                            <td>Matrícula 2026</td>
+                            <td>₡150,000</td>
+                            <td>Tarjeta</td>
+                            <td><span class="badge success">Aprobado</span></td>
+                            <td>
+                                <a href="ADM-008 - Modificación de Registro de Pago.html"
+                                    style="font-weight:700;font-size:13px">Editar</a>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>2025-11-25</td>
+                            <td>Sofía Vargas</td>
+                            <td>Mensualidad Noviembre</td>
+                            <td>₡125,000</td>
+                            <td>Efectivo</td>
+                            <td><span class="badge warning">Pendiente</span></td>
+                            <td>
+                                <a href="ADM-008 - Modificación de Registro de Pago.html"
+                                    style="font-weight:700;font-size:13px">Editar</a>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+</body>
+
+</html>

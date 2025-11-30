@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="es">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>REF-001 - Creación de Nuevos Reportes</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="admin-container">
+        <aside class="sidebar">
+            <div class="brand">
+                <div class="logo">NHS</div>
+                <div>
+                    <div style="font-weight:700">New Hope School</div>
+                    <div style="font-size:12px;color:var(--muted)">Administración</div>
+                </div>
+            </div>
+            <nav>
+                <a href="ADM-002 - Consulta de Lista de Estudiantes.html"><span>👥</span> Gestión Estudiantes</a>
+                <a href="ADM-007 - Consulta de Pagos (Padre_Tutor).html"><span>💳</span> Gestión Pagos</a>
+                <a href="REF-002 - Generación de Reportes Filtrados.html" class="active"><span>📊</span> Reportes</a>
+                <a href="index.html"><span>🏠</span> Volver al Inicio</a>
+            </nav>
+        </aside>
+
+        <main class="admin-content">
+            <header>
+                <div>
+                    <h1>Crear Nuevo Reporte</h1>
+                    <p class="lead">Configure los parámetros para generar un nuevo reporte.</p>
+                </div>
+                <div>
+                    <a href="REF-002 - Generación de Reportes Filtrados.html" class="cta"
+                        style="background:transparent;border:1px solid var(--glass-border);color:var(--muted)">
+                        Cancelar
+                    </a>
+                </div>
+            </header>
+
+            <div class="card" style="max-width:800px">
+                <form>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+                        <div>
+                            <label>Nombre del Reporte *</label>
+                            <input type="text" placeholder="Ej. Rendimiento Anual 2025" required />
+                        </div>
+                        <div>
+                            <label>Tipo de Reporte *</label>
+                            <select required>
+                                <option value="">Seleccionar</option>
+                                <option>Académico</option>
+                                <option>Administrativo</option>
+                                <option>Financiero</option>
+                                <option>Asistencia</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div style="margin-top:12px">
+                        <label>Descripción</label>
+                        <textarea rows="3" placeholder="Breve descripción del propósito del reporte..."></textarea>
+                    </div>
+
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:12px">
+                        <div>
+                            <label>Periodo Desde *</label>
+                            <input type="date" required />
+                        </div>
+                        <div>
+                            <label>Periodo Hasta *</label>
+                            <input type="date" required />
+                        </div>
+                    </div>
+
+                    <div style="margin-top:20px">
+                        <label>Filtros Aplicables</label>
+                        <div style="display:flex;gap:12px;margin-top:8px">
+                            <label style="display:flex;align-items:center;gap:6px;margin:0;font-weight:400">
+                                <input type="checkbox" style="width:auto;margin:0" checked> Por Nivel
+                            </label>
+                            <label style="display:flex;align-items:center;gap:6px;margin:0;font-weight:400">
+                                <input type="checkbox" style="width:auto;margin:0" checked> Por Grupo
+                            </label>
+                            <label style="display:flex;align-items:center;gap:6px;margin:0;font-weight:400">
+                                <input type="checkbox" style="width:auto;margin:0"> Por Estudiante
+                            </label>
+                        </div>
+                    </div>
+
+                    <div style="margin-top:30px;display:flex;justify-content:flex-end;gap:12px">
+                        <button type="submit">Guardar Reporte</button>
+                    </div>
+                </form>
+            </div>
+        </main>
+    </div>
+</body>
+
+</html>

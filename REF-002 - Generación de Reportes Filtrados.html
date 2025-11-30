@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="es">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>REF-002 - Generación de Reportes Filtrados</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="admin-container">
+        <aside class="sidebar">
+            <div class="brand">
+                <div class="logo">NHS</div>
+                <div>
+                    <div style="font-weight:700">New Hope School</div>
+                    <div style="font-size:12px;color:var(--muted)">Administración</div>
+                </div>
+            </div>
+            <nav>
+                <div
+                    style="font-size:11px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;font-weight:800;letter-spacing:0.5px">
+                    Módulo Administrativo</div>
+                <a href="ADM-002 - Consulta de Lista de Estudiantes.html"><span>👥</span> Gestión Estudiantes</a>
+                <a href="ADM-007 - Consulta de Pagos (Padre_Tutor).html"><span>💳</span> Gestión Pagos</a>
+                <a href="REF-002 - Generación de Reportes Filtrados.html" class="active"><span>📊</span> Reportes</a>
+
+                <div style="height:12px"></div>
+                <div
+                    style="font-size:11px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;font-weight:800;letter-spacing:0.5px">
+                    Navegación Principal</div>
+                <a href="index.html"><span>🏠</span> Inicio</a>
+                <a href="REF-006 - Reportes de Grupo (Docente).html"><span>👨‍🏫</span> Docentes</a>
+                <a href="REF-009 - Consulta Individual (Padre de Familia).html"><span>👨‍👩‍👧‍👦</span> Padres</a>
+                <a href="REF-012 - Visualización de Notas (Estudiante).html"><span>🎓</span> Estudiantes</a>
+                <a href="Elr-001-clase-virtual.html"><span>💻</span> E-Learning</a>
+            </nav>
+        </aside>
+
+        <main class="admin-content">
+            <header>
+                <div>
+                    <h1>Reportes y Estadísticas</h1>
+                    <p class="lead">Genere, visualice y exporte reportes del sistema.</p>
+                </div>
+                <div>
+                    <a href="REF-001 - Creación de Nuevos Reportes.html" class="cta">
+                        <span>+</span> Nuevo Reporte
+                    </a>
+                </div>
+            </header>
+
+            <section class="filters">
+                <div>
+                    <label>Tipo de Reporte</label>
+                    <select>
+                        <option value="">Todos</option>
+                        <option>Académico</option>
+                        <option>Administrativo</option>
+                        <option>Financiero</option>
+                    </select>
+                </div>
+                <div>
+                    <label>Periodo</label>
+                    <select>
+                        <option>2025 - I Semestre</option>
+                        <option>2025 - II Semestre</option>
+                        <option>2024 - Anual</option>
+                    </select>
+                </div>
+                <div>
+                    <label>Fecha Específica</label>
+                    <input type="date" />
+                </div>
+                <div style="display:flex;align-items:flex-end">
+                    <button style="width:100%">Generar / Buscar</button>
+                </div>
+            </section>
+
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Nombre del Reporte</th>
+                            <th>Tipo</th>
+                            <th>Fecha Creación</th>
+                            <th>Autor</th>
+                            <th>Estado</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Rendimiento Académico 10mo</td>
+                            <td>Académico</td>
+                            <td>2025-11-20</td>
+                            <td>Admin</td>
+                            <td><span class="badge success">Activo</span></td>
+                            <td>
+                                <a href="REF-003 - Actualización de Reportes Existentes.html"
+                                    style="margin-right:8px;font-weight:700;font-size:13px">Editar</a>
+                                <a href="#"
+                                    style="margin-right:8px;font-weight:700;font-size:13px;color:var(--accent)">Exportar</a>
+                                <a href="REF-004 - Eliminar o Archivar Reportes.html"
+                                    style="font-weight:700;font-size:13px;color:var(--danger)">Eliminar</a>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>Reporte de Morosidad Nov</td>
+                            <td>Financiero</td>
+                            <td>2025-11-28</td>
+                            <td>Admin</td>
+                            <td><span class="badge success">Activo</span></td>
+                            <td>
+                                <a href="REF-003 - Actualización de Reportes Existentes.html"
+                                    style="margin-right:8px;font-weight:700;font-size:13px">Editar</a>
+                                <a href="#"
+                                    style="margin-right:8px;font-weight:700;font-size:13px;color:var(--accent)">Exportar</a>
+                                <a href="REF-004 - Eliminar o Archivar Reportes.html"
+                                    style="font-weight:700;font-size:13px;color:var(--danger)">Eliminar</a>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>Asistencia Docente 2024</td>
+                            <td>Administrativo</td>
+                            <td>2024-12-15</td>
+                            <td>Admin</td>
+                            <td><span class="badge neutral">Archivado</span></td>
+                            <td>
+                                <a href="REF-003 - Actualización de Reportes Existentes.html"
+                                    style="margin-right:8px;font-weight:700;font-size:13px">Editar</a>
+                                <a href="#"
+                                    style="margin-right:8px;font-weight:700;font-size:13px;color:var(--accent)">Exportar</a>
+                                <a href="REF-004 - Eliminar o Archivar Reportes.html"
+                                    style="font-weight:700;font-size:13px;color:var(--success)">Restaurar</a>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div style="margin-top:20px;text-align:right">
+                <a href="REF-005 - Reportes Globales de Rendimiento.html"
+                    style="color:var(--accent);font-weight:700;text-decoration:none">Ver Estadísticas Globales →</a>
+            </div>
+        </main>
+    </div>
+</body>
+
+</html>
