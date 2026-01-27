@@ -4,7 +4,7 @@ return [
     'db' => [
         'host' => 'localhost',
         'user' => 'root',
-        'pass' => 'Riolu21.',
+        'pass' => '',
         'name' => 'new_hope_platform',
         'port' => 3306,
         'charset' => 'utf8mb4',
