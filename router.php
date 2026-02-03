@@ -25,6 +25,7 @@ try {
 
         // Gestión de usuarios (ADMIN)
         case 'users_list': $users->list(); break;
+        case 'users_list_for_students': $users->listForStudents(); break;
         case 'users_create': $users->create(); break;
         case 'users_update': $users->update(); break;
         case 'users_setRole': $users->setRole(); break;
@@ -35,6 +36,7 @@ try {
         case 'students_create': $mat->createStudent(); break;
         case 'students_list': $mat->listStudents(); break;
         case 'students_update': $mat->updateStudent(); break;
+        case 'students_updateUserId': $mat->updateStudentUserId(); break;
         case 'students_delete': $mat->deleteStudent(); break;
 
         case 'enrollments_create': $mat->createEnrollment(); break;

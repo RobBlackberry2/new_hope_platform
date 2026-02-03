@@ -5,9 +5,9 @@ class CourseSection {
     private mysqli $db;
     public function __construct() { $this->db = Database::connect(); }
 
-    public function create(int $course_id, string $titulo, int $orden = 0): int|false {
-        $stmt = $this->db->prepare('INSERT INTO course_sections (course_id, titulo, orden) VALUES (?,?,?)');
-        $stmt->bind_param('isi', $course_id, $titulo, $orden);
+    public function create(int $course_id, string $titulo, string $descripcion, int $semana, int $orden = 0): int|false {
+        $stmt = $this->db->prepare('INSERT INTO course_sections (course_id, titulo, descripcion, semana, orden) VALUES (?,?,?,?,?)');
+        $stmt->bind_param('issii', $course_id, $titulo, $descripcion, $semana, $orden);
         if (!$stmt->execute()) return false;
         return (int)$this->db->insert_id;
     }

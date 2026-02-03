@@ -95,4 +95,22 @@ class EnrollmentsController {
         if ($model->delete($id)) echo json_encode(['status' => 'success']);
         else { http_response_code(500); echo json_encode(['status'=>'error','message'=>'No se pudo eliminar']); }
     }
+
+    public function updateStudentUserId(): void {
+        require_login();
+        require_role(['ADMIN']);
+        $id = (int)($_POST['id'] ?? 0);
+        $user_id_raw = $_POST['user_id'] ?? '';
+        if (!$id) { http_response_code(400); echo json_encode(['status'=>'error','message'=>'Falta id']); return; }
+        $user_id = null;
+        if ($user_id_raw !== '') {
+            $user_id = (int)$user_id_raw;
+            if ($user_id <= 0) $user_id = null;
+        }
+        $model = new Student();
+        $ok = $model->updateUserId($id, $user_id);
+        if ($ok) echo json_encode(['status' => 'success']);
+        else { http_response_code(500); echo json_encode(['status'=>'error','message'=>'No se pudo actualizar user_id']); }
+    }
+
 }

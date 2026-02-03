@@ -8,25 +8,19 @@ require_once __DIR__ . '/../helpers/auth.php';
 class ElearningController {
     public function createCourse(): void {
         require_login();
-        require_role(['ADMIN','DOCENTE']);
+        require_role(['ADMIN']);
         $u = current_user();
 
         $nombre = $_POST['nombre'] ?? '';
         $descripcion = $_POST['descripcion'] ?? '';
         $grado = (int)($_POST['grado'] ?? 7);
+        $seccion = $_POST['seccion'] ?? '';
         $docente_user_id = (int)($_POST['docente_user_id'] ?? 0);
 
         if (!$nombre) { http_response_code(400); echo json_encode(['status'=>'error','message'=>'Nombre es requerido']); return; }
 
-        // Si es docente, solo puede crear a su nombre
-        if (($u['rol'] ?? '') === 'DOCENTE') {
-            $docente_user_id = (int)$u['id'];
-        } else {
-            if (!$docente_user_id) $docente_user_id = (int)$u['id'];
-        }
-
         $model = new Course();
-        $id = $model->create($nombre, $descripcion, $grado, $docente_user_id);
+        $id = $model->create($nombre, $descripcion, $grado, $seccion, $docente_user_id);
         if ($id) echo json_encode(['status'=>'success','id'=>$id]);
         else { http_response_code(500); echo json_encode(['status'=>'error','message'=>'No se pudo crear el curso']); }
     }
@@ -45,11 +39,19 @@ class ElearningController {
         if (($u['rol'] ?? '') === 'ESTUDIANTE') {
             $student = new Student();
             $s = $student->getByUserId((int)$u['id']);
+
             if (!$s) {
                 echo json_encode(['status'=>'success','data'=>[], 'message'=>'No hay ficha de estudiante asociada a este usuario']);
                 return;
             }
-            $data = $course->list((int)$s['grado'], null, (int)($_GET['limit'] ?? 200));
+
+            $seccion = $s['seccion'] ?? '';
+            if (!$seccion) {
+                echo json_encode(['status'=>'success','data'=>[], 'message'=>'El estudiante no tiene sección asignada']);
+                return;
+            }
+
+            $data = $course->listBySeccion($seccion, (int)($_GET['limit'] ?? 200));
             echo json_encode(['status'=>'success','data'=>$data]);
             return;
         }
@@ -67,6 +69,8 @@ class ElearningController {
 
         $course_id = (int)($_POST['course_id'] ?? 0);
         $titulo = $_POST['titulo'] ?? '';
+        $descripcion = $_POST['descripcion'] ?? '';
+        $semana = (int)($_POST['semana'] ?? 0);
         $orden = (int)($_POST['orden'] ?? 0);
 
         if (!$course_id || !$titulo) { http_response_code(400); echo json_encode(['status'=>'error','message'=>'Faltan datos']); return; }
@@ -82,7 +86,7 @@ class ElearningController {
         }
 
         $model = new CourseSection();
-        $id = $model->create($course_id, $titulo, $orden);
+        $id = $model->create($course_id, $titulo, $descripcion, $semana, $orden);
         if ($id) echo json_encode(['status'=>'success','id'=>$id]);
         else { http_response_code(500); echo json_encode(['status'=>'error','message'=>'No se pudo crear la sección']); }
     }

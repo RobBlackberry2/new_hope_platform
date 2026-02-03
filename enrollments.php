@@ -49,6 +49,7 @@ const tbl = document.getElementById('tblStudents');
 const msg = document.getElementById('msg');
 const tblEnr = document.getElementById('tblEnr');
 const msgEnr = document.getElementById('msgEnr');
+let USERS = [];
 
 function studentRow(s){
   return `<tr>
@@ -57,6 +58,11 @@ function studentRow(s){
     <td>${s.cedula||''}</td>
     <td>${s.grado||''}</td>
     <td>${s.seccion||''}</td>
+    <td>
+      <select data-kind="user_id" data-id="${s.id}">
+        ${userOptionsHtml(s.user_id)}
+      </select>
+    </td>
     <td><button class="btn danger" data-kind="del" data-id="${s.id}">Eliminar</button></td>
   </tr>`;
 }
@@ -83,11 +89,34 @@ async function loadStudents(){
   try {
     const j = await api('students_list', { method:'GET', params:{limit:200} });
     const data = j.data||[];
-    tbl.innerHTML = `<tr><th>Id</th><th>Nombre</th><th>Cédula</th><th>Grado</th><th>Sección</th><th></th><th></th></tr>` + data.map(studentRow).join('');
+    tbl.innerHTML = `<tr><th>Id</th><th>Nombre</th><th>Cédula</th><th>Grado</th><th>Sección</th><th>User</th><th></th></tr>` + data.map(studentRow).join('');
     msg.textContent='';
   } catch (err){
     msg.textContent = err?.json?.message || 'Error cargando estudiantes';
   }
+}
+
+
+
+async function loadUsers(){
+  try {
+    const j = await api('users_list_for_students', { method:'GET', params:{limit:500} });
+    USERS = j.data || [];
+  } catch {
+    USERS = [];
+  }
+}
+
+function userOptionsHtml(selectedId){
+  const sel = selectedId ? String(selectedId) : '';
+  const opts = [`<option value="">(sin usuario)</option>`];
+
+  for (const u of USERS){
+    const label = `${u.nombre} (@${u.username}) [${u.id}]`;
+    const selected = (String(u.id) === sel) ? 'selected' : '';
+    opts.push(`<option value="${u.id}" ${selected}>${label}</option>`);
+  }
+  return opts.join('');
 }
 
 async function loadEnrollments(){
@@ -154,6 +183,20 @@ tblEnr.addEventListener('change', async (e)=>{
   catch (err){ alert(err?.json?.message || 'Error'); }
 });
 
+tbl.addEventListener('change', async (e)=>{
+  const kind = e.target.getAttribute('data-kind');
+  const id = e.target.getAttribute('data-id');
+  if (kind !== 'user_id') return;
+
+  const user_id = e.target.value; // '' o un id
+  try {
+    await api('students_updateUserId', { data: { id, user_id } });
+  } catch (err){
+    alert(err?.json?.message || 'Error actualizando user_id');
+    await loadStudents();
+  }
+});
+
 tblEnr.addEventListener('click', async (e)=>{
   const kind = e.target.getAttribute('data-kind');
   const id = e.target.getAttribute('data-id');
@@ -163,8 +206,11 @@ tblEnr.addEventListener('click', async (e)=>{
   catch (err){ alert(err?.json?.message || 'Error'); }
 });
 
-loadStudents();
-loadEnrollments();
+(async ()=>{
+  await loadUsers();      
+  await loadStudents();    
+  await loadEnrollments(); 
+})();
 </script>
 
 <?php include __DIR__ . '/components/footer.php'; ?>

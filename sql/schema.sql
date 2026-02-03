@@ -27,10 +27,10 @@ CREATE TABLE IF NOT EXISTS students (
   encargado VARCHAR(120) NULL,
   telefono_encargado VARCHAR(30) NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  INDEX (grado),
   CONSTRAINT fk_students_user FOREIGN KEY (user_id) REFERENCES users(id)
     ON UPDATE CASCADE ON DELETE SET NULL
 ) ENGINE=InnoDB;
+
 
 CREATE TABLE IF NOT EXISTS enrollments (
   id INT AUTO_INCREMENT PRIMARY KEY,
@@ -52,8 +52,6 @@ CREATE TABLE IF NOT EXISTS messages (
   cuerpo TEXT NOT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   read_at TIMESTAMP NULL,
-  INDEX (to_user_id),
-  INDEX (to_role),
   CONSTRAINT fk_msg_from FOREIGN KEY (from_user_id) REFERENCES users(id)
     ON UPDATE CASCADE ON DELETE CASCADE,
   CONSTRAINT fk_msg_to FOREIGN KEY (to_user_id) REFERENCES users(id)
@@ -65,24 +63,28 @@ CREATE TABLE IF NOT EXISTS courses (
   nombre VARCHAR(150) NOT NULL,
   descripcion TEXT NULL,
   grado TINYINT NOT NULL,
+  seccion VARCHAR(10) NOT NULL,
   docente_user_id INT NOT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  INDEX (grado),
-  INDEX (docente_user_id),
   CONSTRAINT fk_course_docente FOREIGN KEY (docente_user_id) REFERENCES users(id)
     ON UPDATE CASCADE ON DELETE RESTRICT
 ) ENGINE=InnoDB;
+
+ALTER TABLE courses
+ADD COLUMN seccion VARCHAR(10) NOT NULL AFTER grado;
 
 CREATE TABLE IF NOT EXISTS course_sections (
   id INT AUTO_INCREMENT PRIMARY KEY,
   course_id INT NOT NULL,
   titulo VARCHAR(200) NOT NULL,
+  descripcion VARCHAR(200),
+  semana INT NOT NULL DEFAULT 1,
   orden INT NOT NULL DEFAULT 0,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  INDEX (course_id),
   CONSTRAINT fk_section_course FOREIGN KEY (course_id) REFERENCES courses(id)
     ON UPDATE CASCADE ON DELETE CASCADE
 ) ENGINE=InnoDB;
+
 
 CREATE TABLE IF NOT EXISTS course_resources (
   id INT AUTO_INCREMENT PRIMARY KEY,
@@ -93,7 +95,6 @@ CREATE TABLE IF NOT EXISTS course_resources (
   size INT NOT NULL,
   uploaded_by INT NOT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  INDEX (section_id),
   CONSTRAINT fk_res_section FOREIGN KEY (section_id) REFERENCES course_sections(id)
     ON UPDATE CASCADE ON DELETE CASCADE,
   CONSTRAINT fk_res_user FOREIGN KEY (uploaded_by) REFERENCES users(id)
@@ -106,3 +107,5 @@ CREATE TABLE IF NOT EXISTS course_resources (
 INSERT INTO users (username, password_hash, nombre, correo, telefono, rol, estado)
 VALUES ('admin', '$2y$10$M1ack1Y3bEBXcvOvymPAfOhIS3sW8Q5te.6Q7.jz4Il3PaHYhsZ2.', 'Administrador', 'admin@colegio.local', NULL, 'ADMIN', 'ACTIVO')
 ON DUPLICATE KEY UPDATE username=username;
+
+

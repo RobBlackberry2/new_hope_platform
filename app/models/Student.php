@@ -70,4 +70,16 @@ class Student {
         $stmt->bind_param('i', $id);
         return (bool)$stmt->execute();
     }
-}
+
+    public function updateUserId(int $id, ?int $user_id): bool {
+        if (!$user_id) {
+            $stmt = $this->db->prepare('UPDATE students SET user_id = NULL WHERE id = ?');
+            $stmt->bind_param('i', $id);
+            return (bool)$stmt->execute();
+        }
+
+        $stmt = $this->db->prepare('UPDATE students SET user_id = ? WHERE id = ?');
+        $stmt->bind_param('ii', $user_id, $id);
+        return (bool)$stmt->execute();
+    }
+    }

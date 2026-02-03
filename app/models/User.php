@@ -76,4 +76,15 @@ class User {
         $stmt->bind_param('i', $id);
         return (bool)$stmt->execute();
     }
+
+    public function listForStudents(int $limit = 500): array {
+        $limit = max(1, min(2000, $limit));
+        $sql = "SELECT id, username, nombre, rol, estado
+                FROM users
+                WHERE estado = 'ACTIVO'
+                ORDER BY nombre ASC
+                LIMIT " . (int)$limit;
+        $res = $this->db->query($sql);
+        return $res ? $res->fetch_all(MYSQLI_ASSOC) : [];
+    }
 }

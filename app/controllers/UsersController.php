@@ -108,4 +108,12 @@ class UsersController {
         if ($model->delete($id)) echo json_encode(['status' => 'success']);
         else { http_response_code(500); echo json_encode(['status' => 'error', 'message' => 'No se pudo eliminar']); }
     }
+
+    public function listForStudents(): void {
+        require_login();
+        require_role(['ADMIN']);
+        $model = new User();
+        $limit = (int)($_GET['limit'] ?? 500);
+        echo json_encode(['status' => 'success', 'data' => $model->listForStudents($limit)]);
+    }
 }
