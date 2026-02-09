@@ -3,7 +3,10 @@ require_once __DIR__ . '/app/helpers/auth.php';
 $config = require __DIR__ . '/app/config/config.php';
 $base_url = $config['base_url'] ?? '';
 $u = current_user();
-if (!$u) { header('Location: ' . $base_url . '/login.php'); exit; }
+if (!$u) {
+  header('Location: ' . $base_url . '/login.php');
+  exit;
+}
 include __DIR__ . '/components/header.php';
 $rol = $u['rol'] ?? '';
 ?>
@@ -13,18 +16,44 @@ $rol = $u['rol'] ?? '';
     <p class="muted">Rol: <strong><?= htmlspecialchars($rol) ?></strong></p>
     <p class="muted">Página principal</p>
   </div>
-  <div class="card">
-    <h3>Reportes</h3>
-    <div class="muted">Seccion destinada para los Reportes</div>
-  </div>
+  <a class="card" href="<?= $base_url ?>/reports.php">
+    <h3>📊 Reportes e Informes</h3>
+    <div class="muted">Consulta y genera reportes académicos, de asistencia y rendimiento institucional.</div>
+  </a>
 </section>
 
+<?php if ($rol === 'ADMIN' || $rol === 'DOCENTE'): ?>
+  <section class="grid3">
+    <a class="card" href="<?= $base_url ?>/grades.php">
+      <h3>📝 Calificaciones</h3>
+      <p class="muted">Gestión de calificaciones de estudiantes.</p>
+    </a>
+    <a class="card" href="<?= $base_url ?>/attendance.php">
+      <h3>📅 Asistencia</h3>
+      <p class="muted">Registro de asistencia diaria.</p>
+    </a>
+    <a class="card" href="<?= $base_url ?>/reports.php">
+      <h3>📈 Análisis</h3>
+      <p class="muted">Reportes y estadísticas.</p>
+    </a>
+  </section>
+<?php endif; ?>
+
 <?php if ($rol === 'ADMIN'): ?>
-<section class="grid3">
-  <a class="card" href="<?= $base_url ?>/users.php"><h3>Gestión de usuarios</h3><p class="muted">Administrador de usuarios, roles y estados.</p></a>
-  <a class="card" href="<?= $base_url ?>/enrollments.php"><h3>Matrículas</h3><p class="muted">Administrador de estudiantes y matrículas.</p></a>
-  <a class="card" href="<?= $base_url ?>/inbox.php"><h3>Mensajería</h3><p class="muted">Enviar comunicados por rol o usuario.</p></a>
-</section>
+  <section class="grid3">
+    <a class="card" href="<?= $base_url ?>/users.php">
+      <h3>Gestión de usuarios</h3>
+      <p class="muted">Administrador de usuarios, roles y estados.</p>
+    </a>
+    <a class="card" href="<?= $base_url ?>/enrollments.php">
+      <h3>Matrículas</h3>
+      <p class="muted">Administrador de estudiantes y matrículas.</p>
+    </a>
+    <a class="card" href="<?= $base_url ?>/inbox.php">
+      <h3>Mensajería</h3>
+      <p class="muted">Enviar comunicados por rol o usuario.</p>
+    </a>
+  </section>
 <?php endif; ?>
 
 <section class="card">
