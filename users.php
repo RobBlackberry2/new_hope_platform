@@ -2,114 +2,245 @@
 require_once __DIR__ . '/app/helpers/auth.php';
 $config = require __DIR__ . '/app/config/config.php';
 $base_url = $config['base_url'] ?? '';
-$u = current_user();
-if (!$u) { header('Location: ' . $base_url . '/login.php'); exit; }
-if (($u['rol'] ?? '') !== 'ADMIN') { http_response_code(403); die('Sin permisos'); }
+
+$user = current_user();
+if (!$user) {
+  header('location: ' . $base_url . '/login.php');
+  exit;
+}
+
+if (($user['rol'] ?? '') !== 'ADMIN') {
+  http_response_code(403);
+  die('sin permisos');
+}
+
 include __DIR__ . '/components/header.php';
 ?>
+
+<style>
+.table th,
+.table td {
+  text-align: center;
+  vertical-align: middle;
+}
+
+.table select,
+.table button {
+  margin: auto;
+}
+
+#search {
+  width: 100%;
+  margin-bottom: 10px;
+}
+
+#pagination {
+  margin-top: 15px;
+  text-align: center;
+}
+
+#pagination button {
+  margin: 0 3px;
+  padding: 5px 10px;
+}
+
+#pagination button.active {
+  background: #4ade80;
+  color: #000;
+}
+</style>
+
 <section class="card">
-  <h2>Gestión de usuarios (ADMIN)</h2>
-  <p class="muted">CRUD básico: crear usuarios, cambiar rol y estado.</p>
+  <h2>gestión de usuarios (admin)</h2>
+  <p class="muted">administración básica de usuarios.</p>
 </section>
 
 <section class="card">
-  <h3>Crear usuario</h3>
+  <h3>crear usuario</h3>
   <form id="formCreate" class="grid2">
-    <label>Username<input name="username" required /></label>
-    <label>Contraseña<input name="password" type="password" required /></label>
-    <label>Nombre<input name="nombre" required /></label>
-    <label>Correo<input name="correo" type="email" required /></label>
-    <label>Teléfono<input name="telefono" /></label>
-    <label>Rol
+    <label>username<input name="username" required></label>
+    <label>contraseña<input name="password" type="password" required></label>
+    <label>nombre<input name="nombre" required></label>
+    <label>correo<input name="correo" type="email" required></label>
+    <label>teléfono<input name="telefono"></label>
+    <label>rol
       <select name="rol">
         <option>ADMIN</option>
         <option>DOCENTE</option>
         <option selected>ESTUDIANTE</option>
       </select>
     </label>
-    <button class="btn" type="submit">Crear</button>
+    <button class="btn" type="submit">crear</button>
     <div id="msgCreate" class="muted"></div>
   </form>
 </section>
 
 <section class="card">
-  <h3>Usuarios</h3>
+  <h3>usuarios</h3>
+
+  <input type="text" id="search" placeholder="buscar usuario...">
+
   <div class="muted" id="msg"></div>
-  <div style="overflow:auto;">
+
+  <div style="overflow:auto">
     <table class="table" id="tbl"></table>
   </div>
+
+  <div id="pagination"></div>
 </section>
 
 <script>
 const tbl = document.getElementById('tbl');
 const msg = document.getElementById('msg');
+const search = document.getElementById('search');
+const pagination = document.getElementById('pagination');
 
-function row(u){
-  const rolOptions = ['ADMIN','DOCENTE','ESTUDIANTE'].map(r=>`<option ${u.rol===r?'selected':''}>${r}</option>`).join('');
-  const estadoOptions = ['ACTIVO','INACTIVO'].map(s=>`<option ${u.estado===s?'selected':''}>${s}</option>`).join('');
-  return `<tr>
-    <td>${u.id}</td>
-    <td>${u.username}</td>
-    <td>${u.nombre||''}</td>
-    <td>${u.correo||''}</td>
-    <td>${u.telefono||''}</td>
-    <td><select data-id="${u.id}" data-kind="rol">${rolOptions}</select></td>
-    <td><select data-id="${u.id}" data-kind="estado">${estadoOptions}</select></td>
-    <td><button class="btn danger" data-id="${u.id}" data-kind="del">Eliminar</button></td>
-  </tr>`;
+let data = [];
+let page = 1;
+const perPage = 5;
+
+function makeRow(u) {
+  return `
+    <tr>
+      <td>${u.id}</td>
+      <td>${u.username}</td>
+      <td>${u.nombre || ''}</td>
+      <td>${u.correo || ''}</td>
+      <td>${u.telefono || ''}</td>
+      <td>
+        <select data-id="${u.id}" data-type="rol">
+          <option ${u.rol === 'ADMIN' ? 'selected' : ''}>ADMIN</option>
+          <option ${u.rol === 'DOCENTE' ? 'selected' : ''}>DOCENTE</option>
+          <option ${u.rol === 'ESTUDIANTE' ? 'selected' : ''}>ESTUDIANTE</option>
+        </select>
+      </td>
+      <td>
+        <select data-id="${u.id}" data-type="estado">
+          <option ${u.estado === 'ACTIVO' ? 'selected' : ''}>ACTIVO</option>
+          <option ${u.estado === 'INACTIVO' ? 'selected' : ''}>INACTIVO</option>
+        </select>
+      </td>
+      <td>
+        <button class="btn danger" data-id="${u.id}" data-type="del">eliminar</button>
+      </td>
+    </tr>
+  `;
 }
 
-async function load(){
-  msg.textContent = 'Cargando...';
-  try {
-    const j = await api('users_list', { method:'GET', params:{limit:200} });
-    const data = j.data||[];
-    tbl.innerHTML = `<tr><th>Id</th><th>Username</th><th>Nombre</th><th>Correo</th><th>Teléfono</th><th>Rol</th><th>Estado</th><th></th></tr>` + data.map(row).join('');
-    msg.textContent = '';
-  } catch (err) {
-    msg.textContent = err?.json?.message || 'Error cargando usuarios';
+function drawTable(list) {
+  const start = (page - 1) * perPage;
+  const end = start + perPage;
+
+  tbl.innerHTML = `
+    <tr>
+      <th>id</th>
+      <th>username</th>
+      <th>nombre</th>
+      <th>correo</th>
+      <th>teléfono</th>
+      <th>rol</th>
+      <th>estado</th>
+      <th></th>
+    </tr>
+  `;
+
+  list.slice(start, end).forEach(u => {
+    tbl.innerHTML += makeRow(u);
+  });
+
+  drawPagination(list.length);
+}
+
+function drawPagination(total) {
+  pagination.innerHTML = '';
+  const pages = Math.ceil(total / perPage);
+
+  for (let i = 1; i <= pages; i++) {
+    const b = document.createElement('button');
+    b.textContent = i;
+    if (i === page) b.classList.add('active');
+    b.onclick = () => {
+      page = i;
+      filter();
+    };
+    pagination.appendChild(b);
   }
 }
 
-document.getElementById('formCreate').addEventListener('submit', async (e)=>{
+function filter() {
+  const q = search.value.toLowerCase();
+  const filtered = data.filter(u =>
+    u.username.toLowerCase().includes(q) ||
+    (u.nombre || '').toLowerCase().includes(q) ||
+    (u.correo || '').toLowerCase().includes(q)
+  );
+  drawTable(filtered);
+}
+
+search.addEventListener('input', () => {
+  page = 1;
+  filter();
+});
+
+async function loadUsers() {
+  msg.textContent = 'cargando...';
+  try {
+    const r = await api('users_list', { method: 'GET', params: { limit: 200 } });
+    data = r.data || [];
+    page = 1;
+    filter();
+    msg.textContent = '';
+  } catch {
+    msg.textContent = 'error cargando usuarios';
+  }
+}
+
+document.getElementById('formCreate').addEventListener('submit', async e => {
   e.preventDefault();
   const fd = new FormData(e.target);
-  const msgCreate = document.getElementById('msgCreate');
-  msgCreate.textContent = '';
+  const out = document.getElementById('msgCreate');
+  out.textContent = '';
   try {
-    await api('users_create', { data: fd, isForm:true });
-    msgCreate.textContent = 'Usuario creado.';
+    await api('users_create', { data: fd, isForm: true });
+    out.textContent = 'usuario creado';
     e.target.reset();
-    await load();
-  } catch (err) {
-    msgCreate.textContent = err?.json?.message || 'Error creando usuario';
+    loadUsers();
+  } catch {
+    out.textContent = 'error al crear usuario';
   }
 });
 
-// cambios en selects y botones
- tbl.addEventListener('change', async (e)=>{
-   const el = e.target;
-   const id = el.getAttribute('data-id');
-   const kind = el.getAttribute('data-kind');
-   if (!id || !kind) return;
-   try {
-     if (kind === 'rol') await api('users_setRole', { data: {id, rol: el.value} });
-     if (kind === 'estado') await api('users_setEstado', { data: {id, estado: el.value} });
-   } catch (err) {
-     alert(err?.json?.message || 'Error');
-   }
- });
+tbl.addEventListener('change', async e => {
+  const id = e.target.dataset.id;
+  const type = e.target.dataset.type;
+  if (!id) return;
 
- tbl.addEventListener('click', async (e)=>{
-   const btn = e.target;
-   if (btn.getAttribute('data-kind') !== 'del') return;
-   const id = btn.getAttribute('data-id');
-   if (!confirm('¿Eliminar usuario #' + id + '?')) return;
-   try { await api('users_delete', { data: {id} }); await load(); }
-   catch (err) { alert(err?.json?.message || 'Error'); }
- });
+  try {
+    if (type === 'rol') {
+      await api('users_setRole', { data: { id, rol: e.target.value } });
+    }
+    if (type === 'estado') {
+      await api('users_setEstado', { data: { id, estado: e.target.value } });
+    }
+  } catch {
+    alert('error');
+  }
+});
 
-load();
+tbl.addEventListener('click', async e => {
+  if (e.target.dataset.type !== 'del') return;
+  const id = e.target.dataset.id;
+  if (!confirm('¿eliminar usuario #' + id + '?')) return;
+
+  try {
+    await api('users_delete', { data: { id } });
+    loadUsers();
+  } catch {
+    alert('error');
+  }
+});
+
+loadUsers();
 </script>
 
 <?php include __DIR__ . '/components/footer.php'; ?>
