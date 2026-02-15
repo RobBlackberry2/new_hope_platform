@@ -6,9 +6,6 @@ require_once __DIR__ . '/app/controllers/UsersController.php';
 require_once __DIR__ . '/app/controllers/EnrollmentsController.php';
 require_once __DIR__ . '/app/controllers/MessagesController.php';
 require_once __DIR__ . '/app/controllers/ElearningController.php';
-require_once __DIR__ . '/app/controllers/GradesController.php';
-require_once __DIR__ . '/app/controllers/AttendanceController.php';
-require_once __DIR__ . '/app/controllers/ReportsController.php';
 
 $action = $_GET['action'] ?? '';
 
@@ -17,9 +14,6 @@ $users = new UsersController();
 $mat = new EnrollmentsController();
 $mess = new MessagesController();
 $e = new ElearningController();
-$grades = new GradesController();
-$att = new AttendanceController();
-$reports = new ReportsController();
 
 try {
     switch ($action) {
@@ -58,54 +52,13 @@ try {
         // E-Learning
         case 'courses_create': $e->createCourse(); break;
         case 'courses_list': $e->listCourses(); break;
+        case 'courses_delete': $e->deleteCourse(); break;
         case 'sections_create': $e->createSection(); break;
         case 'sections_list': $e->listSections(); break;
+        case 'sections_delete': $e->deleteSection(); break;
         case 'resources_upload': $e->uploadResource(); break;
         case 'resources_list': $e->listResources(); break;
         case 'resources_delete': $e->deleteResource(); break;
-
-        // Gestión de Calificaciones
-        case 'grades_create': $grades->createGrade(); break;
-        case 'grades_list': $grades->listGrades(); break;
-        case 'grades_update': $grades->updateGrade(); break;
-        case 'grades_delete': $grades->deleteGrade(); break;
-        case 'grades_student': $grades->getStudentGrades(); break;
-
-        // Gestión de Asistencia
-        case 'attendance_create': $att->createAttendance(); break;
-        case 'attendance_list': $att->listAttendance(); break;
-        case 'attendance_update': $att->updateAttendance(); break;
-        case 'attendance_student': $att->getStudentAttendance(); break;
-
-        // Reportes - Administrador (REF-001 a REF-005)
-        case 'reports_create': $reports->createReport(); break;
-        case 'reports_list': $reports->listReports(); break;
-        case 'reports_update': $reports->updateReport(); break;
-        case 'reports_delete': $reports->deleteReport(); break;
-        case 'reports_archive': $reports->archiveReport(); break;
-        case 'reports_restore': $reports->restoreReport(); break;
-        case 'reports_institutional': $reports->generateInstitutionalReport(); break;
-        case 'reports_export': $reports->exportReport(); break;
-
-        // Reportes - Docente (REF-006 a REF-008)
-        case 'reports_group': $reports->generateGroupReport(); break;
-        case 'reports_comparative': $reports->generateComparativeReport(); break;
-        case 'reports_group_export': $reports->exportGroupReport(); break;
-        case 'observations_add': $reports->addObservation(); break;
-        case 'observations_update': $reports->updateObservation(); break;
-        case 'observations_delete': $reports->deleteObservation(); break;
-
-        // Reportes - Padre (REF-009 a REF-011)
-        case 'reports_student_view': $reports->viewStudentReport(); break;
-        case 'reports_student_download': $reports->downloadStudentReport(); break;
-        case 'reports_attendance_view': $reports->viewAttendanceReport(); break;
-        case 'reports_attendance_export': $reports->exportAttendanceReport(); break;
-
-        // Reportes - Estudiante (REF-012 a REF-014)
-        case 'reports_my_view': $reports->viewMyReport(); break;
-        case 'reports_my_download': $reports->downloadMyReport(); break;
-        case 'reports_my_compare': $reports->compareMyReports(); break;
-        case 'reports_my_comment': $reports->sendReportComment(); break;
 
         default:
             http_response_code(404);

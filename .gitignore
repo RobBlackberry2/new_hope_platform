@@ -1,7 +1,0 @@
-vendor/
-node_modules/
-.env
-.idea/
-.vscode/
-*.log
-composer.lock

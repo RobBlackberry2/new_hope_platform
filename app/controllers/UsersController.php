@@ -2,28 +2,16 @@
 require_once __DIR__ . '/../models/User.php';
 require_once __DIR__ . '/../helpers/auth.php';
 
-class UsersController
-{
-    public function list(): void
-    {
+class UsersController {
+    public function list(): void {
         require_login();
         require_role(['ADMIN']);
         $model = new User();
-        $limit = (int) ($_GET['limit'] ?? 200);
+        $limit = (int)($_GET['limit'] ?? 200);
         echo json_encode(['status' => 'success', 'data' => $model->list($limit)]);
     }
 
-    public function listForStudents(): void
-    {
-        require_login();
-        require_role(['ADMIN']);
-        $model = new User();
-        $limit = (int) ($_GET['limit'] ?? 500);
-        echo json_encode(['status' => 'success', 'data' => $model->listForStudents($limit)]);
-    }
-
-    public function create(): void
-    {
+    public function create(): void {
         require_login();
         require_role(['ADMIN']);
         $username = $_POST['username'] ?? '';
@@ -54,11 +42,10 @@ class UsersController
         }
     }
 
-    public function update(): void
-    {
+    public function update(): void {
         require_login();
         require_role(['ADMIN']);
-        $id = (int) ($_POST['id'] ?? 0);
+        $id = (int)($_POST['id'] ?? 0);
         $nombre = $_POST['nombre'] ?? '';
         $correo = $_POST['correo'] ?? '';
         $telefono = $_POST['telefono'] ?? null;
@@ -78,11 +65,10 @@ class UsersController
         }
     }
 
-    public function setRole(): void
-    {
+    public function setRole(): void {
         require_login();
         require_role(['ADMIN']);
-        $id = (int) ($_POST['id'] ?? 0);
+        $id = (int)($_POST['id'] ?? 0);
         $rol = $_POST['rol'] ?? '';
         if (!$id || !$rol) {
             http_response_code(400);
@@ -90,19 +76,14 @@ class UsersController
             return;
         }
         $model = new User();
-        if ($model->setRole($id, $rol))
-            echo json_encode(['status' => 'success']);
-        else {
-            http_response_code(500);
-            echo json_encode(['status' => 'error', 'message' => 'No se pudo cambiar el rol']);
-        }
+        if ($model->setRole($id, $rol)) echo json_encode(['status' => 'success']);
+        else { http_response_code(500); echo json_encode(['status' => 'error', 'message' => 'No se pudo cambiar el rol']); }
     }
 
-    public function setEstado(): void
-    {
+    public function setEstado(): void {
         require_login();
         require_role(['ADMIN']);
-        $id = (int) ($_POST['id'] ?? 0);
+        $id = (int)($_POST['id'] ?? 0);
         $estado = $_POST['estado'] ?? '';
         if (!$id || !$estado) {
             http_response_code(400);
@@ -110,30 +91,29 @@ class UsersController
             return;
         }
         $model = new User();
-        if ($model->setEstado($id, $estado))
-            echo json_encode(['status' => 'success']);
-        else {
-            http_response_code(500);
-            echo json_encode(['status' => 'error', 'message' => 'No se pudo cambiar el estado']);
-        }
+        if ($model->setEstado($id, $estado)) echo json_encode(['status' => 'success']);
+        else { http_response_code(500); echo json_encode(['status' => 'error', 'message' => 'No se pudo cambiar el estado']); }
     }
 
-    public function delete(): void
-    {
+    public function delete(): void {
         require_login();
         require_role(['ADMIN']);
-        $id = (int) ($_POST['id'] ?? 0);
+        $id = (int)($_POST['id'] ?? 0);
         if (!$id) {
             http_response_code(400);
             echo json_encode(['status' => 'error', 'message' => 'Falta id']);
             return;
         }
         $model = new User();
-        if ($model->delete($id))
-            echo json_encode(['status' => 'success']);
-        else {
-            http_response_code(500);
-            echo json_encode(['status' => 'error', 'message' => 'No se pudo eliminar']);
-        }
+        if ($model->delete($id)) echo json_encode(['status' => 'success']);
+        else { http_response_code(500); echo json_encode(['status' => 'error', 'message' => 'No se pudo eliminar']); }
+    }
+
+    public function listForStudents(): void {
+        require_login();
+        require_role(['ADMIN']);
+        $model = new User();
+        $limit = (int)($_GET['limit'] ?? 500);
+        echo json_encode(['status' => 'success', 'data' => $model->listForStudents($limit)]);
     }
 }

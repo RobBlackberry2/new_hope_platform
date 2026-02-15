@@ -3,14 +3,8 @@ require_once __DIR__ . '/app/helpers/auth.php';
 $config = require __DIR__ . '/app/config/config.php';
 $base_url = $config['base_url'] ?? '';
 $u = current_user();
-if (!$u) {
-  header('Location: ' . $base_url . '/login.php');
-  exit;
-}
-if (($u['rol'] ?? '') !== 'ADMIN') {
-  http_response_code(403);
-  die('Sin permisos');
-}
+if (!$u) { header('Location: ' . $base_url . '/login.php'); exit; }
+if (($u['rol'] ?? '') !== 'ADMIN') { http_response_code(403); die('Sin permisos'); }
 include __DIR__ . '/components/header.php';
 ?>
 <section class="card">
@@ -51,19 +45,19 @@ include __DIR__ . '/components/header.php';
 </section>
 
 <script>
-  const tbl = document.getElementById('tblStudents');
-  const msg = document.getElementById('msg');
-  const tblEnr = document.getElementById('tblEnr');
-  const msgEnr = document.getElementById('msgEnr');
-  let USERS = [];
+const tbl = document.getElementById('tblStudents');
+const msg = document.getElementById('msg');
+const tblEnr = document.getElementById('tblEnr');
+const msgEnr = document.getElementById('msgEnr');
+let USERS = [];
 
-  function studentRow(s) {
-    return `<tr>
+function studentRow(s){
+  return `<tr>
     <td>${s.id}</td>
-    <td>${s.nombre || ''}</td>
-    <td>${s.cedula || ''}</td>
-    <td>${s.grado || ''}</td>
-    <td>${s.seccion || ''}</td>
+    <td>${s.nombre||''}</td>
+    <td>${s.cedula||''}</td>
+    <td>${s.grado||''}</td>
+    <td>${s.seccion||''}</td>
     <td>
       <select data-kind="user_id" data-id="${s.id}">
         ${userOptionsHtml(s.user_id)}
@@ -71,151 +65,152 @@ include __DIR__ . '/components/header.php';
     </td>
     <td><button class="btn danger" data-kind="del" data-id="${s.id}">Eliminar</button></td>
   </tr>`;
-  }
+}
 
-  function enrRow(e) {
-    return `<tr>
+function enrRow(e){
+  return `<tr>
     <td>${e.id}</td>
     <td>${e.student_id}</td>
-    <td>${e.student_nombre || ''}</td>
-    <td>${e.grado || ''}${e.seccion ? (' - ' + e.seccion) : ''}</td>
+    <td>${e.student_nombre||''}</td>
+    <td>${e.grado||''}${e.seccion?(' - '+e.seccion):''}</td>
     <td>${e.year}</td>
     <td>
       <select data-kind="estado" data-id="${e.id}">
-        <option ${e.estado === 'ACTIVA' ? 'selected' : ''}>ACTIVA</option>
-        <option ${e.estado === 'PENDIENTE' ? 'selected' : ''}>PENDIENTE</option>
+        <option ${e.estado==='ACTIVA'?'selected':''}>ACTIVA</option>
+        <option ${e.estado==='PENDIENTE'?'selected':''}>PENDIENTE</option>
       </select>
     </td>
     <td><button class="btn danger" data-kind="del_enr" data-id="${e.id}">Eliminar</button></td>
   </tr>`;
+}
+
+async function loadStudents(){
+  msg.textContent = 'Cargando...';
+  try {
+    const j = await api('students_list', { method:'GET', params:{limit:200} });
+    const data = j.data||[];
+    tbl.innerHTML = `<tr><th>Id</th><th>Nombre</th><th>Cédula</th><th>Grado</th><th>Sección</th><th>User</th><th></th></tr>` + data.map(studentRow).join('');
+    msg.textContent='';
+  } catch (err){
+    msg.textContent = err?.json?.message || 'Error cargando estudiantes';
   }
+}
 
-  async function loadStudents() {
-    msg.textContent = 'Cargando...';
-    try {
-      const j = await api('students_list', { method: 'GET', params: { limit: 200 } });
-      const data = j.data || [];
-      tbl.innerHTML = `<tr><th>Id</th><th>Nombre</th><th>Cédula</th><th>Grado</th><th>Sección</th><th>User</th><th></th></tr>` + data.map(studentRow).join('');
-      msg.textContent = '';
-    } catch (err) {
-      msg.textContent = err?.json?.message || 'Error cargando estudiantes';
-    }
+
+
+async function loadUsers(){
+  try {
+    const j = await api('users_list_for_students', { method:'GET', params:{limit:500} });
+    USERS = j.data || [];
+  } catch {
+    USERS = [];
   }
+}
 
+function userOptionsHtml(selectedId){
+  const sel = selectedId ? String(selectedId) : '';
+  const opts = [`<option value="">(sin usuario)</option>`];
 
-  async function loadUsers() {
-    try {
-      const j = await api('users_list_for_students', { method: 'GET', params: { limit: 500 } });
-      USERS = j.data || [];
-    } catch {
-      USERS = [];
-    }
+  for (const u of USERS){
+    const label = `${u.nombre} (@${u.username}) [${u.id}]`;
+    const selected = (String(u.id) === sel) ? 'selected' : '';
+    opts.push(`<option value="${u.id}" ${selected}>${label}</option>`);
   }
+  return opts.join('');
+}
 
-  function userOptionsHtml(selectedId) {
-    const sel = selectedId ? String(selectedId) : '';
-    const opts = [`<option value="">(sin usuario)</option>`];
-
-    for (const u of USERS) {
-      const label = `${u.nombre} (@${u.username}) [${u.id}]`;
-      const selected = (String(u.id) === sel) ? 'selected' : '';
-      opts.push(`<option value="${u.id}" ${selected}>${label}</option>`);
-    }
-    return opts.join('');
+async function loadEnrollments(){
+  msgEnr.textContent = 'Cargando...';
+  try {
+    const j = await api('enrollments_list', { method:'GET', params:{limit:200} });
+    const data = j.data||[];
+    tblEnr.innerHTML = `<tr><th>Id</th><th>Estudiante Id</th><th>Estudiante</th><th>Grado</th><th>Año</th><th>Estado</th><th></th></tr>` + data.map(enrRow).join('');
+    msgEnr.textContent='';
+  } catch (err){
+    msgEnr.textContent = err?.json?.message || 'Error cargando matrículas';
   }
+}
 
-  async function loadEnrollments() {
-    msgEnr.textContent = 'Cargando...';
-    try {
-      const j = await api('enrollments_list', { method: 'GET', params: { limit: 200 } });
-      const data = j.data || [];
-      tblEnr.innerHTML = `<tr><th>Id</th><th>Estudiante Id</th><th>Estudiante</th><th>Grado</th><th>Año</th><th>Estado</th><th></th></tr>` + data.map(enrRow).join('');
-      msgEnr.textContent = '';
-    } catch (err) {
-      msgEnr.textContent = err?.json?.message || 'Error cargando matrículas';
-    }
-  }
+document.getElementById('formStudent').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  const ms = document.getElementById('msgStudent');
+  ms.textContent='';
 
-  document.getElementById('formStudent').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const fd = new FormData(e.target);
-    const ms = document.getElementById('msgStudent');
-    ms.textContent = '';
+  try {
 
-    try {
+    const created = await api('students_create', { data: fd, isForm:true });
+    const studentId = created?.id;
+    if (!studentId) throw new Error('No se recibió id del estudiante');
 
-      const created = await api('students_create', { data: fd, isForm: true });
-      const studentId = created?.id;
-      if (!studentId) throw new Error('No se recibió id del estudiante');
+    const year = parseInt(fd.get('year') || new Date().getFullYear(), 10);
+    await api('enrollments_create', { data: { student_id: studentId, year } });
 
-      const year = parseInt(fd.get('year') || new Date().getFullYear(), 10);
-      await api('enrollments_create', { data: { student_id: studentId, year } });
+    ms.textContent = 'Estudiante creado y matriculado.';
+    e.target.reset();
 
-      ms.textContent = 'Estudiante creado y matriculado.';
-      e.target.reset();
-
-      await loadStudents();
-      await loadEnrollments();
-    } catch (err) {
-      ms.textContent = err?.json?.message || err?.message || 'Error matriculando estudiante';
-    }
-  });
-
-  tbl.addEventListener('click', async (e) => {
-    const kind = e.target.getAttribute('data-kind');
-    const id = e.target.getAttribute('data-id');
-    if (!kind || !id) return;
-
-    if (kind === 'del') {
-      if (!confirm('¿Eliminar estudiante #' + id + '?')) return;
-      try { await api('students_delete', { data: { id } }); await loadStudents(); }
-      catch (err) { alert(err?.json?.message || 'Error'); }
-    }
-
-    if (kind === 'enroll') {
-      const year = prompt('Año de matrícula', new Date().getFullYear());
-      if (!year) return;
-      try { await api('enrollments_create', { data: { student_id: id, year } }); await loadEnrollments(); }
-      catch (err) { alert(err?.json?.message || 'Error'); }
-    }
-  });
-
-  tblEnr.addEventListener('change', async (e) => {
-    const kind = e.target.getAttribute('data-kind');
-    const id = e.target.getAttribute('data-id');
-    if (kind !== 'estado') return;
-    try { await api('enrollments_updateEstado', { data: { id, estado: e.target.value } }); }
-    catch (err) { alert(err?.json?.message || 'Error'); }
-  });
-
-  tbl.addEventListener('change', async (e) => {
-    const kind = e.target.getAttribute('data-kind');
-    const id = e.target.getAttribute('data-id');
-    if (kind !== 'user_id') return;
-
-    const user_id = e.target.value; // '' o un id
-    try {
-      await api('students_updateUserId', { data: { id, user_id } });
-    } catch (err) {
-      alert(err?.json?.message || 'Error actualizando user_id');
-      await loadStudents();
-    }
-  });
-
-  tblEnr.addEventListener('click', async (e) => {
-    const kind = e.target.getAttribute('data-kind');
-    const id = e.target.getAttribute('data-id');
-    if (kind !== 'del_enr') return;
-    if (!confirm('¿Eliminar matrícula #' + id + '?')) return;
-    try { await api('enrollments_delete', { data: { id } }); await loadEnrollments(); }
-    catch (err) { alert(err?.json?.message || 'Error'); }
-  });
-
-  (async () => {
-    await loadUsers();
     await loadStudents();
     await loadEnrollments();
-  })();
+  } catch (err){
+    ms.textContent = err?.json?.message || err?.message || 'Error matriculando estudiante';
+  }
+});
+
+tbl.addEventListener('click', async (e)=>{
+  const kind = e.target.getAttribute('data-kind');
+  const id = e.target.getAttribute('data-id');
+  if (!kind || !id) return;
+
+  if (kind === 'del') {
+    if (!confirm('¿Eliminar estudiante #' + id + '?')) return;
+    try { await api('students_delete', { data:{id} }); await loadStudents(); }
+    catch (err){ alert(err?.json?.message || 'Error'); }
+  }
+
+  if (kind === 'enroll') {
+    const year = prompt('Año de matrícula', new Date().getFullYear());
+    if (!year) return;
+    try { await api('enrollments_create', { data:{student_id:id, year} }); await loadEnrollments(); }
+    catch (err){ alert(err?.json?.message || 'Error'); }
+  }
+});
+
+tblEnr.addEventListener('change', async (e)=>{
+  const kind = e.target.getAttribute('data-kind');
+  const id = e.target.getAttribute('data-id');
+  if (kind !== 'estado') return;
+  try { await api('enrollments_updateEstado', { data:{id, estado:e.target.value} }); }
+  catch (err){ alert(err?.json?.message || 'Error'); }
+});
+
+tbl.addEventListener('change', async (e)=>{
+  const kind = e.target.getAttribute('data-kind');
+  const id = e.target.getAttribute('data-id');
+  if (kind !== 'user_id') return;
+
+  const user_id = e.target.value; // '' o un id
+  try {
+    await api('students_updateUserId', { data: { id, user_id } });
+  } catch (err){
+    alert(err?.json?.message || 'Error actualizando user_id');
+    await loadStudents();
+  }
+});
+
+tblEnr.addEventListener('click', async (e)=>{
+  const kind = e.target.getAttribute('data-kind');
+  const id = e.target.getAttribute('data-id');
+  if (kind !== 'del_enr') return;
+  if (!confirm('¿Eliminar matrícula #' + id + '?')) return;
+  try { await api('enrollments_delete', { data:{id} }); await loadEnrollments(); }
+  catch (err){ alert(err?.json?.message || 'Error'); }
+});
+
+(async ()=>{
+  await loadUsers();      
+  await loadStudents();    
+  await loadEnrollments(); 
+})();
 </script>
 
 <?php include __DIR__ . '/components/footer.php'; ?>

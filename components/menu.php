@@ -6,12 +6,12 @@ $base_url = $config['base_url'] ?? '';
 $u = current_user();
 $rol = $u['rol'] ?? '';
 ?>
-<nav class="menu">
+<nav class="menu" >
   <a href="<?= $base_url ?>/dashboard.php">Inicio</a>
 
   <?php if ($rol === 'ADMIN'): ?>
     <a href="<?= $base_url ?>/enrollments.php">Matrículas</a>
-    <a href="<?= $base_url ?>/reports.php">Reportes</a>
+    <a>Reportes</a>
     <a href="<?= $base_url ?>/users.php">Gestión de usuarios</a>
   <?php endif; ?>
 
