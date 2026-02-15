@@ -26,6 +26,7 @@ try {
         // Gestión de usuarios (ADMIN)
         case 'users_list': $users->list(); break;
         case 'users_list_for_students': $users->listForStudents(); break;
+        case 'users_list_docentes': $users->listDocentes(); break;
         case 'users_create': $users->create(); break;
         case 'users_update': $users->update(); break;
         case 'users_setRole': $users->setRole(); break;
@@ -34,6 +35,7 @@ try {
 
         // Administrativo - Matriculas (ADMIN)
         case 'students_create': $mat->createStudent(); break;
+        case 'students_get': $mat->getStudent(); break;
         case 'students_list': $mat->listStudents(); break;
         case 'students_update': $mat->updateStudent(); break;
         case 'students_updateUserId': $mat->updateStudentUserId(); break;
@@ -43,6 +45,7 @@ try {
         case 'enrollments_list': $mat->listEnrollments(); break;
         case 'enrollments_updateEstado': $mat->updateEnrollmentEstado(); break;
         case 'enrollments_delete': $mat->deleteEnrollment(); break;
+        case 'enrollments_capacity': $mat->capacity(); break;
 
         // Mensajería
         case 'messages_inbox': $mess->inbox(); break;
