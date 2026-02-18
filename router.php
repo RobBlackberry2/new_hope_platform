@@ -1,6 +1,7 @@
 <?php
 header('Content-Type: application/json; charset=utf-8');
 
+
 require_once __DIR__ . '/app/controllers/AuthController.php';
 require_once __DIR__ . '/app/controllers/UsersController.php';
 require_once __DIR__ . '/app/controllers/EnrollmentsController.php';
@@ -56,12 +57,45 @@ try {
         case 'courses_create': $e->createCourse(); break;
         case 'courses_list': $e->listCourses(); break;
         case 'courses_delete': $e->deleteCourse(); break;
-        case 'sections_create': $e->createSection(); break;
-        case 'sections_list': $e->listSections(); break;
-        case 'sections_delete': $e->deleteSection(); break;
+        
         case 'resources_upload': $e->uploadResource(); break;
         case 'resources_list': $e->listResources(); break;
         case 'resources_delete': $e->deleteResource(); break;
+
+        case 'sections_create': $e->createSection(); break;
+        case 'sections_list': $e->listSections(); break;
+        case 'sections_delete': $e->deleteSection(); break;
+        case 'sections_updateTipo': $e->updateSectionTipo(); break;
+
+        case 'assignments_upsert': $e->upsertAssignment(); break;
+        case 'assignments_getBySection': $e->getAssignmentBySection(); break;
+
+        case 'submissions_upload': $e->uploadSubmission(); break;
+        case 'submissions_getMine': $e->getMySubmission(); break;
+        case 'submissions_listByAssignment': $e->listSubmissionsByAssignment(); break;
+
+        case 'grades_set': $e->setGrade(); break;
+
+        case 'groups_create': $e->createGroup(); break;
+        case 'groups_list': $e->listGroups(); break;
+        case 'groups_setMembers': $e->setGroupMembers(); break;
+
+        case 'quizzes_upsert': $e->upsertQuiz(); break;
+        case 'quizzes_getBySection': $e->getQuizBySection(); break;
+
+        case 'quiz_questions_list': $e->listQuizQuestions(); break;
+        case 'quiz_questions_upsert': $e->upsertQuizQuestion(); break;
+        case 'quiz_questions_delete': $e->deleteQuizQuestion(); break;
+
+        case 'quiz_options_upsert': $e->upsertQuizOption(); break;
+        case 'quiz_options_delete': $e->deleteQuizOption(); break;
+
+        case 'quiz_attempt_start': $e->startQuizAttempt(); break;
+        case 'quiz_attempt_mine': $e->getMyQuizAttempt(); break;
+        case 'quiz_attempt_submit': $e->submitQuizAttempt(); break;
+
+        case 'quiz_attempts_list': $e->listQuizAttempts(); break;
+        case 'quiz_attempt_grade_short': $e->gradeShort(); break;
 
         default:
             http_response_code(404);
@@ -71,3 +105,5 @@ try {
     http_response_code(500);
     echo json_encode(['status' => 'error', 'message' => 'Error interno', 'detail' => $ex->getMessage()]);
 }
+
+
