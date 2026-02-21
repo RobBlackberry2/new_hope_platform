@@ -7,6 +7,8 @@ require_once __DIR__ . '/app/controllers/UsersController.php';
 require_once __DIR__ . '/app/controllers/EnrollmentsController.php';
 require_once __DIR__ . '/app/controllers/MessagesController.php';
 require_once __DIR__ . '/app/controllers/ElearningController.php';
+require_once __DIR__ . '/app/controllers/VirtualCampusController.php';
+require_once __DIR__ . '/app/controllers/QuizController.php';
 
 $action = $_GET['action'] ?? '';
 
@@ -15,6 +17,8 @@ $users = new UsersController();
 $mat = new EnrollmentsController();
 $mess = new MessagesController();
 $e = new ElearningController();
+$vc = new VirtualCampusController();
+$qz = new QuizController();
 
 try {
     switch ($action) {
@@ -54,48 +58,50 @@ try {
         case 'messages_send': $mess->send(); break;
 
         // E-Learning
+        case 'course_get': $vc->getCourse(); break;
         case 'courses_create': $e->createCourse(); break;
         case 'courses_list': $e->listCourses(); break;
         case 'courses_delete': $e->deleteCourse(); break;
         
-        case 'resources_upload': $e->uploadResource(); break;
-        case 'resources_list': $e->listResources(); break;
-        case 'resources_delete': $e->deleteResource(); break;
+        case 'resources_upload': $vc->uploadResource(); break;
+        case 'resources_list': $vc->listResources(); break;
+        case 'resources_delete': $vc->deleteResource(); break;
 
-        case 'sections_create': $e->createSection(); break;
-        case 'sections_list': $e->listSections(); break;
-        case 'sections_delete': $e->deleteSection(); break;
-        case 'sections_updateTipo': $e->updateSectionTipo(); break;
+        case 'sections_create': $vc->createSection(); break;
+        case 'sections_list': $vc->listSections(); break;
+        case 'sections_delete': $vc->deleteSection(); break;
+        case 'sections_updateTipo': $vc->updateSectionTipo(); break;
 
-        case 'assignments_upsert': $e->upsertAssignment(); break;
-        case 'assignments_getBySection': $e->getAssignmentBySection(); break;
+        case 'assignments_upsert': $vc->upsertAssignment(); break;
+        case 'assignments_getBySection': $vc->getAssignmentBySection(); break;
 
-        case 'submissions_upload': $e->uploadSubmission(); break;
-        case 'submissions_getMine': $e->getMySubmission(); break;
-        case 'submissions_listByAssignment': $e->listSubmissionsByAssignment(); break;
+        case 'submissions_upload': $vc->uploadSubmission(); break;
+        case 'submissions_getMine': $vc->getMySubmission(); break;
+        case 'submissions_listByAssignment': $vc->listSubmissionsByAssignment(); break;
 
-        case 'grades_set': $e->setGrade(); break;
+        case 'grades_set': $vc->setGrade(); break;
 
-        case 'groups_create': $e->createGroup(); break;
-        case 'groups_list': $e->listGroups(); break;
-        case 'groups_setMembers': $e->setGroupMembers(); break;
+        case 'groups_create': $vc->createGroup(); break;
+        case 'groups_list': $vc->listGroups(); break;
+        case 'groups_setMembers': $vc->setGroupMembers(); break;
 
-        case 'quizzes_upsert': $e->upsertQuiz(); break;
-        case 'quizzes_getBySection': $e->getQuizBySection(); break;
+        // Quiz / Exámenes (separado)
+        case 'quizzes_upsert': $qz->upsertQuiz(); break;
+        case 'quizzes_getBySection': $qz->getQuizBySection(); break;
 
-        case 'quiz_questions_list': $e->listQuizQuestions(); break;
-        case 'quiz_questions_upsert': $e->upsertQuizQuestion(); break;
-        case 'quiz_questions_delete': $e->deleteQuizQuestion(); break;
+        case 'quiz_questions_list': $qz->listQuizQuestions(); break;
+        case 'quiz_questions_upsert': $qz->upsertQuizQuestion(); break;
+        case 'quiz_questions_delete': $qz->deleteQuizQuestion(); break;
 
-        case 'quiz_options_upsert': $e->upsertQuizOption(); break;
-        case 'quiz_options_delete': $e->deleteQuizOption(); break;
+        case 'quiz_options_upsert': $qz->upsertQuizOption(); break;
+        case 'quiz_options_delete': $qz->deleteQuizOption(); break;
 
-        case 'quiz_attempt_start': $e->startQuizAttempt(); break;
-        case 'quiz_attempt_mine': $e->getMyQuizAttempt(); break;
-        case 'quiz_attempt_submit': $e->submitQuizAttempt(); break;
+        case 'quiz_attempt_start': $qz->startQuizAttempt(); break;
+        case 'quiz_attempt_mine': $qz->getMyQuizAttempt(); break;
+        case 'quiz_attempt_submit': $qz->submitQuizAttempt(); break;
 
-        case 'quiz_attempts_list': $e->listQuizAttempts(); break;
-        case 'quiz_attempt_grade_short': $e->gradeShort(); break;
+        case 'quiz_attempts_list': $qz->listQuizAttempts(); break;
+        case 'quiz_attempt_grade_short': $qz->gradeShort(); break;
 
         default:
             http_response_code(404);

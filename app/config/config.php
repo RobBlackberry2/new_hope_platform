@@ -2,9 +2,9 @@
 // Deben ajustar los valores segun su entorno local
 return [
     'db' => [
-        'host' => '127.0.0.1',
+        'host' => 'localhost',
         'user' => 'root',
-        'pass' => '',
+        'pass' => 'Riolu21.',
         'name' => 'new_hope_platform',
         'port' => 3306,
         'charset' => 'utf8mb4',
