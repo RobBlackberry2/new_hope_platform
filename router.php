@@ -1,13 +1,13 @@
 <?php
 header('Content-Type: application/json; charset=utf-8');
 
-
 require_once __DIR__ . '/app/controllers/AuthController.php';
 require_once __DIR__ . '/app/controllers/UsersController.php';
 require_once __DIR__ . '/app/controllers/EnrollmentsController.php';
 require_once __DIR__ . '/app/controllers/MessagesController.php';
 require_once __DIR__ . '/app/controllers/ElearningController.php';
 require_once __DIR__ . '/app/controllers/VirtualCampusController.php';
+require_once __DIR__ . '/app/controllers/AssignementResourseController.php';
 require_once __DIR__ . '/app/controllers/QuizController.php';
 
 $action = $_GET['action'] ?? '';
@@ -18,6 +18,7 @@ $mat = new EnrollmentsController();
 $mess = new MessagesController();
 $e = new ElearningController();
 $vc = new VirtualCampusController();
+$ar = new AssignementResourseController();
 $qz = new QuizController();
 
 try {
@@ -57,33 +58,36 @@ try {
         case 'messages_sent': $mess->sent(); break;
         case 'messages_send': $mess->send(); break;
 
-        // E-Learning
+        // E-Learning / Virtual Campus (Curso + Secciones)
         case 'course_get': $vc->getCourse(); break;
+
         case 'courses_create': $e->createCourse(); break;
         case 'courses_list': $e->listCourses(); break;
         case 'courses_delete': $e->deleteCourse(); break;
-        
-        case 'resources_upload': $vc->uploadResource(); break;
-        case 'resources_list': $vc->listResources(); break;
-        case 'resources_delete': $vc->deleteResource(); break;
 
         case 'sections_create': $vc->createSection(); break;
         case 'sections_list': $vc->listSections(); break;
         case 'sections_delete': $vc->deleteSection(); break;
         case 'sections_updateTipo': $vc->updateSectionTipo(); break;
 
-        case 'assignments_upsert': $vc->upsertAssignment(); break;
-        case 'assignments_getBySection': $vc->getAssignmentBySection(); break;
+        // Recursos (movido a AssignementResourseController)
+        case 'resources_upload': $ar->uploadResource(); break;
+        case 'resources_list': $ar->listResources(); break;
+        case 'resources_delete': $ar->deleteResource(); break;
 
-        case 'submissions_upload': $vc->uploadSubmission(); break;
-        case 'submissions_getMine': $vc->getMySubmission(); break;
-        case 'submissions_listByAssignment': $vc->listSubmissionsByAssignment(); break;
+        // Tareas / Entregas / Notas / Grupos (movido a AssignementResourseController)
+        case 'assignments_upsert': $ar->upsertAssignment(); break;
+        case 'assignments_getBySection': $ar->getAssignmentBySection(); break;
 
-        case 'grades_set': $vc->setGrade(); break;
+        case 'submissions_upload': $ar->uploadSubmission(); break;
+        case 'submissions_getMine': $ar->getMySubmission(); break;
+        case 'submissions_listByAssignment': $ar->listSubmissionsByAssignment(); break;
 
-        case 'groups_create': $vc->createGroup(); break;
-        case 'groups_list': $vc->listGroups(); break;
-        case 'groups_setMembers': $vc->setGroupMembers(); break;
+        case 'grades_set': $ar->setGrade(); break;
+
+        case 'groups_create': $ar->createGroup(); break;
+        case 'groups_list': $ar->listGroups(); break;
+        case 'groups_setMembers': $ar->setGroupMembers(); break;
 
         // Quiz / Exámenes (separado)
         case 'quizzes_upsert': $qz->upsertQuiz(); break;
@@ -102,6 +106,7 @@ try {
 
         case 'quiz_attempts_list': $qz->listQuizAttempts(); break;
         case 'quiz_attempt_grade_short': $qz->gradeShort(); break;
+        case 'quiz_attempt_review_student': $qz->studentAttemptReview(); break;
 
         default:
             http_response_code(404);
@@ -111,5 +116,3 @@ try {
     http_response_code(500);
     echo json_encode(['status' => 'error', 'message' => 'Error interno', 'detail' => $ex->getMessage()]);
 }
-
-

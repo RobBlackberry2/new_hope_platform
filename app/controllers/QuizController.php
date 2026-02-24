@@ -180,6 +180,7 @@ class QuizController
             return;
         }
         $this->assertDocenteOwnsCourse((int) $quiz['course_id']);
+        $this->assertQuizQuestionsEditable($quiz_id);
 
         $qid = (new QuizQuestion())->upsert($id, $quiz_id, $type, $text, $points, $orden);
         if ($qid) {
@@ -211,6 +212,7 @@ class QuizController
             return;
         }
         $this->assertDocenteOwnsCourse((int) $quiz['course_id']);
+        $this->assertQuizQuestionsEditable($quiz_id);
 
         if ((new QuizQuestion())->delete($id, $quiz_id)) {
             echo json_encode(['status' => 'success']);
@@ -282,7 +284,37 @@ class QuizController
             return;
         }
 
-        // MVP: borrado directo
+        require_once __DIR__ . '/../config/db.php';
+        $db = Database::connect();
+
+        // Buscar quiz_id y course_id para validar dueño + bloqueo
+        $stmt = $db->prepare(
+            "SELECT qq.quiz_id, c.id AS course_id
+         FROM quiz_options qo
+         JOIN quiz_questions qq ON qq.id = qo.question_id
+         JOIN quizzes q ON q.id = qq.quiz_id
+         JOIN course_sections cs ON cs.id = q.section_id
+         JOIN courses c ON c.id = cs.course_id
+         WHERE qo.id = ?
+         LIMIT 1"
+        );
+        $stmt->bind_param('i', $id);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+
+        if (!$row) {
+            http_response_code(404);
+            echo json_encode(['status' => 'error', 'message' => 'Opción no encontrada']);
+            return;
+        }
+
+        $quiz_id = (int) $row['quiz_id'];
+        $course_id = (int) $row['course_id'];
+
+        $this->assertDocenteOwnsCourse($course_id);
+        $this->assertQuizQuestionsEditable($quiz_id);
+
         if ((new QuizOption())->delete($id)) {
             echo json_encode(['status' => 'success']);
         } else {
@@ -746,4 +778,129 @@ class QuizController
 
         echo json_encode(['status' => 'success', 'data' => ['raw_points' => $raw_points, 'max_points' => $max_points, 'score' => $score]]);
     }
+
+    private function assertQuizQuestionsEditable(int $quiz_id): void
+    {
+        $u = current_user();
+        $rol = $u['rol'] ?? '';
+
+        // ✅ aplica a DOCENTE (y si querés también a ADMIN, quita esta condición)
+        if ($rol !== 'DOCENTE')
+            return;
+
+        require_once __DIR__ . '/../config/db.php';
+        $db = Database::connect();
+
+        $stmt = $db->prepare(
+            "SELECT COUNT(*) AS c
+         FROM quiz_attempts
+         WHERE quiz_id=?
+           AND status <> 'IN_PROGRESS'"
+        );
+        $stmt->bind_param('i', $quiz_id);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+
+        $count = (int) ($row['c'] ?? 0);
+        if ($count > 0) {
+            http_response_code(403);
+            echo json_encode([
+                'status' => 'error',
+                'message' => 'No se pueden modificar preguntas/opciones: ya existen entregas de estudiantes.'
+            ]);
+            exit;
+        }
+    }
+
+    public function studentAttemptReview(): void
+    {
+        require_login();
+        require_role(['ESTUDIANTE']);
+
+        $u = current_user();
+        $quiz_id = (int) ($_GET['quiz_id'] ?? 0);
+        if (!$quiz_id) {
+            http_response_code(400);
+            echo json_encode(['status' => 'error', 'message' => 'Falta quiz_id']);
+            return;
+        }
+
+        $quiz = (new Quiz())->getWithCourse($quiz_id);
+        if (!$quiz) {
+            http_response_code(404);
+            echo json_encode(['status' => 'error', 'message' => 'Quiz no encontrado']);
+            return;
+        }
+
+        // ✅ el student_id real viene de la tabla students (no del user_id)
+        $student = (new Student())->getByUserId((int) ($u['id'] ?? 0));
+        if (!$student) {
+            http_response_code(400);
+            echo json_encode(['status' => 'error', 'message' => 'No hay ficha de estudiante']);
+            return;
+        }
+
+        $attemptModel = new QuizAttempt();
+        $attempt = $attemptModel->getMine($quiz_id, (int) $student['id']); // ✅ correcto
+        if (!$attempt) {
+            http_response_code(404);
+            echo json_encode(['status' => 'error', 'message' => 'No hay intentos para este quiz']);
+            return;
+        }
+
+        if (($attempt['status'] ?? '') === 'IN_PROGRESS') {
+            http_response_code(400);
+            echo json_encode(['status' => 'error', 'message' => 'El intento aún está en progreso']);
+            return;
+        }
+
+        // Respeta show_results (NO / AFTER_SUBMIT / AFTER_DUE)
+        $mode = $quiz['show_results'] ?? 'AFTER_SUBMIT';
+        $allow = false;
+
+        if ($mode === 'AFTER_SUBMIT')
+            $allow = true;
+        if ($mode === 'NO')
+            $allow = false;
+
+        if ($mode === 'AFTER_DUE') {
+            $due = $quiz['due_at'] ?? null;
+            if ($due) {
+                $dueTs = strtotime($due); // "YYYY-MM-DD HH:mm:ss" OK
+                $allow = ($dueTs !== false) ? (time() >= $dueTs) : false;
+            } else {
+                $allow = false;
+            }
+        }
+
+        if (!$allow) {
+            http_response_code(403);
+            echo json_encode(['status' => 'error', 'message' => 'Los resultados no están disponibles según la configuración del quiz']);
+            return;
+        }
+
+        // Traer preguntas + opciones + correcta + respuestas
+        $qq = new QuizQuestion();
+        $qo = new QuizOption();
+        $questions = $qq->listByQuiz($quiz_id);
+
+        foreach ($questions as &$q) {
+            $qid = (int) $q['id'];
+            $q['options'] = $qo->listByQuestion($qid);
+            $q['correct_option_id'] = $qo->getCorrectOptionId($qid); // ✅ necesario para correctas/incorrectas
+        }
+
+        $answers = $attemptModel->listAnswers((int) $attempt['id']);
+
+        echo json_encode([
+            'status' => 'success',
+            'data' => [
+                'attempt' => $attempt,
+                'questions' => $questions,
+                'answers' => $answers
+            ]
+        ]);
+    }
+
 }

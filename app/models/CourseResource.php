@@ -6,18 +6,43 @@ class CourseResource {
     public function __construct() { $this->db = Database::connect(); }
 
     public function create(int $section_id, string $stored_name, string $original_name, string $mime, int $size, int $uploaded_by): int|false {
-        $stmt = $this->db->prepare('INSERT INTO course_resources (section_id, stored_name, original_name, mime, size, uploaded_by) VALUES (?,?,?,?,?,?)');
+        $stmt = $this->db->prepare('
+            INSERT INTO course_resources (section_id, stored_name, original_name, mime, size, uploaded_by)
+            VALUES (?,?,?,?,?,?)
+        ');
         $stmt->bind_param('isssii', $section_id, $stored_name, $original_name, $mime, $size, $uploaded_by);
         if (!$stmt->execute()) return false;
         return (int)$this->db->insert_id;
     }
 
     public function listBySection(int $section_id): array {
-        $stmt = $this->db->prepare('SELECT r.*, u.nombre AS uploaded_by_nombre FROM course_resources r JOIN users u ON u.id = r.uploaded_by WHERE r.section_id = ? ORDER BY r.id DESC');
+        $stmt = $this->db->prepare('
+            SELECT r.*, u.nombre AS uploaded_by_nombre
+            FROM course_resources r
+            JOIN users u ON u.id = r.uploaded_by
+            WHERE r.section_id = ?
+            ORDER BY r.id DESC
+        ');
         $stmt->bind_param('i', $section_id);
         $stmt->execute();
         $res = $stmt->get_result();
         return $res ? $res->fetch_all(MYSQLI_ASSOC) : [];
+    }
+
+    // NUEVO: trae info del curso + dueño (docente_user_id) para validar permisos
+    public function getWithCourse(int $resource_id): ?array {
+        $stmt = $this->db->prepare('
+            SELECT r.*, s.course_id, c.docente_user_id
+            FROM course_resources r
+            JOIN course_sections s ON s.id = r.section_id
+            JOIN courses c ON c.id = s.course_id
+            WHERE r.id = ?
+            LIMIT 1
+        ');
+        $stmt->bind_param('i', $resource_id);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+        return $row ?: null;
     }
 
     public function delete(int $id): ?array {

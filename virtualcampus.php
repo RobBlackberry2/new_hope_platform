@@ -362,8 +362,7 @@ let currentCourse = null;
           <select name="tipo" required>
             <option value="RECURSOS" selected>Recursos</option>
             <option value="TAREA">Tarea</option>
-            <option value="QUIZ">Quiz</option>
-            <option value="EXAMEN">Examen</option>
+            <option value="QUIZ">Quiz/Examen</option>
             <option value="AVISO">Aviso</option>
           </select>
         </label>

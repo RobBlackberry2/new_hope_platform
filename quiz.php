@@ -44,6 +44,8 @@ include __DIR__ . '/components/header.php';
   const IS_ADMIN = ROLE === 'ADMIN';
   const IS_DOCENTE = ROLE === 'DOCENTE';
   const IS_STUDENT = ROLE === 'ESTUDIANTE';
+  const PAGE_SIZE = 10;
+  const __pagerState = {};
 
   function escapeHtml(v) {
     return String(v ?? '')
@@ -52,6 +54,40 @@ include __DIR__ . '/components/header.php';
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#39;');
+  }
+
+  function getPager(sectionId) {
+    if (!__pagerState[sectionId]) {
+      __pagerState[sectionId] = { page: 1, draft: {} };
+    }
+    return __pagerState[sectionId];
+  }
+
+  function clamp(n, a, b) {
+    return Math.max(a, Math.min(b, n));
+  }
+
+  function syncDraftFromDOM(sectionId, questionsOnPage) {
+    const pager = getPager(sectionId);
+    const box = document.getElementById('attemptBox_' + sectionId);
+    if (!box) return;
+
+    for (const q of questionsOnPage) {
+      const qid = String(q.id);
+
+      if (q.type === 'SHORT') {
+        const ta = box.querySelector(`textarea[name="short_${qid}"]`);
+        if (ta) {
+          pager.draft[qid] = { ...(pager.draft[qid] || {}), answer_text: String(ta.value || '') };
+        }
+      } else {
+        const checked = box.querySelector(`input[type="radio"][name="opt_${qid}"]:checked`);
+        if (checked) {
+          pager.draft[qid] = { ...(pager.draft[qid] || {}), selected_option_id: Number(checked.value) };
+        } else {
+        }
+      }
+    }
   }
 
   function toLocalInputValue(dt) {
@@ -123,7 +159,9 @@ include __DIR__ . '/components/header.php';
       </form>
 
       <hr class="sep" />
-      <div class="card" style="padding:10px;">
+        <div id="lockMsg_${sectionId}"></div>
+
+        <div id="questionsCard_${sectionId}" class="card" style="padding:10px;">
         <strong>Preguntas</strong>
         <form data-kind="questionUpsert" data-section="${sectionId}" style="margin-top:8px;" class="grid2">
           <label>Tipo
@@ -202,7 +240,10 @@ include __DIR__ . '/components/header.php';
               <strong>[${escapeHtml(q.type)}] (${q.points} pts)</strong>
               <div style="margin-top:6px;">${escapeHtml(q.question_text)}</div>
             </div>
-            <button class="btn danger" data-kind="qDel" data-id="${q.id}" data-section="${sectionId}" data-quiz="${quizId}">Eliminar</button>
+            <button class="btn danger" data-kind="qDel" data-id="${q.id}" data-section="${sectionId}" data-quiz="${quizId}"
+              ${window.__QUIZ_LOCKED__ ? 'disabled' : ''}>
+              Eliminar
+            </button>
           </div>
           <div style="margin-top:8px;">${optionsHtml}</div>
         </div>
@@ -338,6 +379,10 @@ include __DIR__ . '/components/header.php';
 
       box.innerHTML = `<div class="card" style="padding:10px;">
     <strong>Intento enviado</strong>
+    <button class="btn" data-kind="studentReview" data-quiz="${quizId}">
+      Ver revisión
+    </button>
+    <div id="student_review_box" style="margin-top:10px;"></div>
     <div class="muted">Estado: ${escapeHtml(att.status)}</div>
 
     ${allowed ? `
@@ -353,28 +398,102 @@ include __DIR__ . '/components/header.php';
       return;
     }
 
-    const formQs = qs.map(q => {
-      const a = amap[String(q.id)] || {};
-      if (q.type === 'SHORT') {
-        return `<div class="card" style="margin-top:8px; padding:10px;">
-          <strong>${escapeHtml(q.question_text)}</strong>
-          <textarea name="short_${q.id}" rows="2" style="margin-top:6px;">${escapeHtml(a.answer_text || '')}</textarea>
-        </div>`;
-      }
+    const pager = getPager(sectionId);
 
-      const opts = (q.options || []).map(o => {
-        const checked = String(a.selected_option_id || '') === String(o.id) ? 'checked' : '';
-        return `<label style="display:block; margin-top:4px;">
-          <input type="radio" name="opt_${q.id}" value="${o.id}" ${checked} />
-          ${escapeHtml(o.option_text)}
-        </label>`;
+    // Inicializa draft con respuestas ya guardadas (solo la primera vez)
+    if (!pager.__initDraftDone) {
+      for (const q of qs) {
+        const a = amap[String(q.id)] || {};
+        if (q.type === 'SHORT') {
+          pager.draft[String(q.id)] = { answer_text: String(a.answer_text || '') };
+        } else {
+          if (a.selected_option_id) {
+            pager.draft[String(q.id)] = { selected_option_id: Number(a.selected_option_id) };
+          }
+        }
+      }
+      pager.__initDraftDone = true;
+    }
+
+    const total = qs.length;
+    const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+    pager.page = clamp(pager.page || 1, 1, totalPages);
+
+    function renderPage() {
+      const startIdx = (pager.page - 1) * PAGE_SIZE;
+      const pageQs = qs.slice(startIdx, startIdx + PAGE_SIZE);
+
+      const formQs = pageQs.map(q => {
+        const d = pager.draft[String(q.id)] || {};
+        if (q.type === 'SHORT') {
+          return `<div class="card" style="margin-top:8px; padding:10px;">
+        <strong>${escapeHtml(q.question_text)}</strong>
+        <textarea name="short_${q.id}" rows="2" style="margin-top:6px;">${escapeHtml(d.answer_text || '')}</textarea>
+      </div>`;
+        }
+
+        const opts = (q.options || []).map(o => {
+          const checked = String(d.selected_option_id || '') === String(o.id) ? 'checked' : '';
+          return `<label style="display:block; margin-top:4px;">
+        <input type="radio" name="opt_${q.id}" value="${o.id}" ${checked} />
+        ${escapeHtml(o.option_text)}
+      </label>`;
+        }).join('');
+
+        return `<div class="card" style="margin-top:8px; padding:10px;">
+      <strong>${escapeHtml(q.question_text)}</strong>
+      <div style="margin-top:6px;">${opts || '<span class="muted">Sin opciones.</span>'}</div>
+    </div>`;
       }).join('');
 
-      return `<div class="card" style="margin-top:8px; padding:10px;">
-        <strong>${escapeHtml(q.question_text)}</strong>
-        <div style="margin-top:6px;">${opts || '<span class="muted">Sin opciones.</span>'}</div>
-      </div>`;
-    }).join('');
+      box.innerHTML = `
+    <div class="card" style="padding:10px; margin-bottom:10px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
+        <div><strong>Página ${pager.page} de ${totalPages}</strong> <span class="muted">(${total} preguntas)</span></div>
+        <div style="display:flex; gap:8px;">
+          <button class="btn" type="button" data-kind="pagePrev" data-section="${sectionId}">Anterior</button>
+          <button class="btn" type="button" data-kind="pageNext" data-section="${sectionId}">Siguiente</button>
+        </div>
+      </div>
+    </div>
+
+    <form data-kind="attemptSubmit" data-section="${sectionId}" data-quiz="${quizId}">
+      ${formQs}
+
+      <div style="display:flex; gap:10px; align-items:center; margin-top:10px;">
+        <button class="btn" type="submit">Enviar</button>
+        <span class="muted" data-kind="msgSubmitAttempt" data-section="${sectionId}"></span>
+      </div>
+    </form>
+  `;
+
+      const btnPrev = box.querySelector(`[data-kind="pagePrev"][data-section="${sectionId}"]`);
+      const btnNext = box.querySelector(`[data-kind="pageNext"][data-section="${sectionId}"]`);
+      if (btnPrev) btnPrev.disabled = (pager.page <= 1);
+      if (btnNext) btnNext.disabled = (pager.page >= totalPages);
+    }
+
+    renderPage();
+
+    box.addEventListener('input', (ev) => {
+      const t = ev.target;
+      if (!t) return;
+
+      if (t.name && t.name.startsWith('short_')) {
+        const qid = t.name.replace('short_', '');
+        pager.draft[qid] = { ...(pager.draft[qid] || {}), answer_text: String(t.value || '') };
+      }
+    }, { passive: true });
+
+    box.addEventListener('change', (ev) => {
+      const t = ev.target;
+      if (!t) return;
+
+      if (t.type === 'radio' && t.name && t.name.startsWith('opt_')) {
+        const qid = t.name.replace('opt_', '');
+        pager.draft[qid] = { ...(pager.draft[qid] || {}), selected_option_id: Number(t.value) };
+      }
+    }, { passive: true });
 
     box.innerHTML = `
       <form data-kind="attemptSubmit" data-section="${sectionId}" data-quiz="${quizId}">
@@ -393,14 +512,44 @@ include __DIR__ . '/components/header.php';
 
     const qj = await api('quizzes_getBySection', { method: 'GET', params: { section_id: SECTION_ID } });
     const quiz = qj.data || null;
-
     if (IS_ADMIN || IS_DOCENTE) {
       root.innerHTML = renderQuizAdminUI(SECTION_ID, quiz, TIPO);
-      await loadQuestionsInto(SECTION_ID, quiz?.id || 0);
-      await loadAttemptsInto(SECTION_ID, quiz?.id || 0);
+
+      const qid = quiz?.id || 0;
+
+      await loadQuestionsInto(SECTION_ID, qid);
+      await loadAttemptsInto(SECTION_ID, qid);
+
+      // Bloqueo visual
+      if (qid && (IS_DOCENTE || IS_ADMIN)) {
+        const locked = await isQuizLocked(qid);
+
+        const lockBox = document.getElementById('lockMsg_' + SECTION_ID);
+        const qForm = root.querySelector('form[data-kind="questionUpsert"]');
+        const qCard = document.getElementById('questionsCard_' + SECTION_ID);
+
+        if (locked) {
+          if (lockBox) {
+            lockBox.innerHTML = `
+            <div class="card" style="padding:10px; margin-top:10px;">
+              <strong>Edición bloqueada</strong>
+              <div class="muted">Ya existen entregas de estudiantes. No se pueden modificar preguntas u opciones.</div>
+            </div>
+          `;
+          }
+          if (qForm) qForm.style.display = 'none';
+          if (qCard) qCard.style.display = 'none';
+          window.__QUIZ_LOCKED__ = true;
+        } else {
+          if (lockBox) lockBox.innerHTML = '';
+          if (qForm) qForm.style.display = '';
+          if (qCard) qCard.style.display = '';
+          window.__QUIZ_LOCKED__ = false;
+        }
+      }
+
       return;
     }
-
     if (IS_STUDENT) {
       root.innerHTML = renderQuizStudentUI(SECTION_ID, quiz);
       if (quiz?.id) await loadStudentAttemptInto(SECTION_ID, quiz.id, quiz);
@@ -414,8 +563,29 @@ include __DIR__ . '/components/header.php';
   document.getElementById('quizRoot').addEventListener('click', async (e) => {
     const el = e.target.closest('[data-kind]');
     if (!el) return;
-    const kind = el.getAttribute('data-kind');
 
+    const kind = el.getAttribute('data-kind'); // ✅ SIEMPRE primero
+
+    // ✅ Paginación
+    if (kind === 'pagePrev' || kind === 'pageNext') {
+      const sectionId = el.getAttribute('data-section');
+
+      const qj = await api('quizzes_getBySection', { method: 'GET', params: { section_id: sectionId } });
+      const quiz = qj.data || null;
+      if (!quiz?.id) return;
+
+      const pager = getPager(sectionId);
+
+      const totalQs = (await api('quiz_questions_list', { method: 'GET', params: { quiz_id: quiz.id } })).data?.length || 0;
+      const totalPages = Math.max(1, Math.ceil(totalQs / PAGE_SIZE));
+
+      pager.page = clamp(pager.page + (kind === 'pageNext' ? 1 : -1), 1, totalPages);
+
+      await loadStudentAttemptInto(sectionId, Number(quiz.id), quiz);
+      return;
+    }
+
+    // ✅ Iniciar intento
     if (kind === 'attemptStart') {
       const sectionId = el.getAttribute('data-section');
       const quizId = el.getAttribute('data-quiz');
@@ -425,13 +595,22 @@ include __DIR__ . '/components/header.php';
       try {
         await api('quiz_attempt_start', { data: { quiz_id: quizId } });
         if (msg) msg.textContent = 'Intento iniciado.';
-        await loadStudentAttemptInto(sectionId, Number(quizId));
+
+        const qj = await api('quizzes_getBySection', { method: 'GET', params: { section_id: sectionId } });
+        await loadStudentAttemptInto(sectionId, Number(quizId), qj.data || null);
       } catch (err) {
         if (msg) msg.textContent = err?.json?.message || 'Error iniciando intento';
       }
       return;
     }
 
+    // ✅ Bloqueo para docente (el estudiante no entra aquí)
+    if ((kind === 'qDel' || kind === 'optDel') && window.__QUIZ_LOCKED__) {
+      alert('No se pueden modificar preguntas/opciones: ya existen entregas.');
+      return;
+    }
+
+    // ✅ Eliminar pregunta
     if (kind === 'qDel') {
       const id = el.getAttribute('data-id');
       const sectionId = el.getAttribute('data-section');
@@ -442,6 +621,7 @@ include __DIR__ . '/components/header.php';
       return;
     }
 
+    // ✅ Eliminar opción
     if (kind === 'optDel') {
       const id = el.getAttribute('data-id');
       const sectionId = el.getAttribute('data-section');
@@ -452,20 +632,15 @@ include __DIR__ . '/components/header.php';
       return;
     }
 
+    // ✅ Revisar intento (docente)
     if (kind === 'attemptReview') {
       const attemptId = el.getAttribute('data-attempt');
       const quizId = el.getAttribute('data-quiz');
       const box = document.getElementById('review_' + attemptId);
-
       if (!box) return;
 
-      // toggle
-      if (box.style.display === 'none') {
-        box.style.display = 'block';
-      } else {
-        box.style.display = 'none';
-        return;
-      }
+      if (box.style.display === 'none') box.style.display = 'block';
+      else { box.style.display = 'none'; return; }
 
       box.innerHTML = '<div class="muted">Cargando revisión...</div>';
       try {
@@ -476,13 +651,104 @@ include __DIR__ . '/components/header.php';
       }
       return;
     }
+
+    // ✅ Ver revisión (estudiante)
+    if (kind === 'studentReview') {
+      const quizId = el.getAttribute('data-quiz');
+      const box = document.getElementById('student_review_box');
+      if (!box) return;
+
+      box.innerHTML = '<div class="muted">Cargando revisión...</div>';
+      try {
+        const j = await api('quiz_attempt_review_student', { method: 'GET', params: { quiz_id: quizId } });
+        box.innerHTML = renderStudentReview(j.data);
+      } catch (err) {
+        box.innerHTML = `<div class="muted">${escapeHtml(err?.json?.message || 'Error cargando revisión')}</div>`;
+      }
+      return;
+    }
   });
+
+  function renderStudentReview(payload) {
+    const att = payload.attempt;
+    const questions = payload.questions || [];
+    const answers = payload.answers || [];
+
+    const amap = {};
+    for (const a of answers) amap[String(a.question_id)] = a;
+
+    const items = questions.map(q => {
+      const a = amap[String(q.id)] || {};
+      const maxPts = Number(q.points || 0);
+      const gotPts = Number(a.points_awarded || 0);
+
+      // SHORT
+      if (q.type === 'SHORT') {
+        const pending = (att.status !== 'GRADED');
+        return `
+        <div class="card" style="padding:10px; margin-top:8px;">
+          <div><strong>[SHORT]</strong> <span class="muted">(${gotPts}/${maxPts} pts)</span></div>
+          <div style="margin-top:6px;">${escapeHtml(q.question_text)}</div>
+          <div class="muted" style="margin-top:6px;">Tu respuesta:</div>
+          <div style="margin-top:4px;">${escapeHtml(a.answer_text || '(sin respuesta)')}</div>
+          ${pending ? `<div class="muted" style="margin-top:6px;">Pendiente de revisión del docente</div>` : ``}
+        </div>
+      `;
+      }
+
+      // MCQ/TF
+      const selId = a.selected_option_id ? String(a.selected_option_id) : '';
+      const chosen = (q.options || []).find(o => String(o.id) === selId);
+      const correct = (q.options || []).find(o => String(o.id) === String(q.correct_option_id || ''));
+
+      const isCorrect = selId && (selId === String(q.correct_option_id || ''));
+      const badge = selId
+        ? (isCorrect ? `<span class="badge">Correcta</span>` : `<span class="badge">Incorrecta</span>`)
+        : `<span class="badge">Sin responder</span>`;
+
+      return `
+      <div class="card" style="padding:10px; margin-top:8px;">
+        <div style="display:flex; justify-content:space-between; gap:10px;">
+          <div><strong>[${escapeHtml(q.type)}]</strong> <span class="muted">(${gotPts}/${maxPts} pts)</span></div>
+          <div>${badge}</div>
+        </div>
+        <div style="margin-top:6px;">${escapeHtml(q.question_text)}</div>
+
+        <div class="muted" style="margin-top:6px;">Tu elección:</div>
+        <div>${escapeHtml(chosen?.option_text || '(sin respuesta)')}</div>
+
+        <div class="muted" style="margin-top:6px;">Respuesta correcta:</div>
+        <div>${escapeHtml(correct?.option_text || '(no definida)')}</div>
+      </div>
+    `;
+    }).join('');
+
+    return `
+    <div class="card" style="padding:10px;">
+      <strong>Revisión del intento</strong>
+      <div class="muted">Estado: ${escapeHtml(att.status)} — Nota: ${att.score} — Puntos: ${att.raw_points}/${att.max_points}</div>
+      ${items}
+    </div>
+  `;
+  }
+
+  async function isQuizLocked(quizId) {
+    try {
+      const j = await api('quiz_attempts_list', { method: 'GET', params: { quiz_id: quizId } });
+      const rows = j.data || [];
+      // si existe al menos 1 intento, ya no se debe permitir modificar preguntas/opciones // filtra por status != IN_PROGRESS:
+      return rows.some(r => String(r.status) !== 'IN_PROGRESS');
+    } catch (e) {
+      return false; // si falla, no bloqueamos visualmente, pero backend lo impedirá
+    }
+  }
 
   document.getElementById('quizRoot').addEventListener('submit', async (e) => {
     const form = e.target;
 
     if (form.matches('form[data-kind="quizUpsert"]')) {
       e.preventDefault();
+
       const sectionId = form.getAttribute('data-section');
       const fd = new FormData(form);
 
@@ -503,7 +769,13 @@ include __DIR__ . '/components/header.php';
     }
 
     if (form.matches('form[data-kind="questionUpsert"]')) {
+      if (window.__QUIZ_LOCKED__) {
+        e.preventDefault(); // ✅ evita redirect
+        alert('No se pueden modificar preguntas/opciones: ya existen entregas.');
+        return;
+      }
       e.preventDefault();
+
       const sectionId = form.getAttribute('data-section');
 
       const qj = await api('quizzes_getBySection', { method: 'GET', params: { section_id: sectionId } });
@@ -519,7 +791,13 @@ include __DIR__ . '/components/header.php';
     }
 
     if (form.matches('form[data-kind="optAdd"]')) {
+      if (window.__QUIZ_LOCKED__) {
+        e.preventDefault(); // ✅ evita redirect (este era el bug)
+        alert('No se pueden modificar preguntas/opciones: ya existen entregas.');
+        return;
+      }
       e.preventDefault();
+
       const questionId = form.getAttribute('data-question');
       const sectionId = form.getAttribute('data-section');
       const quizId = form.getAttribute('data-quiz');
@@ -535,24 +813,35 @@ include __DIR__ . '/components/header.php';
 
     if (form.matches('form[data-kind="attemptSubmit"]')) {
       e.preventDefault();
+
       const sectionId = form.getAttribute('data-section');
       const quizId = form.getAttribute('data-quiz');
 
       const msg = document.querySelector(`[data-kind="msgSubmitAttempt"][data-section="${sectionId}"]`);
       if (msg) msg.textContent = '';
 
-      const fd = new FormData(form);
-      const qj = await api('quiz_questions_list', { method: 'GET', params: { quiz_id: quizId } });
-      const qs = qj.data || [];
+      // ✅ NUEVO: enviar TODAS las respuestas usando draft del paginador
+      const pager = getPager(sectionId);
 
+      // Cargar todas las preguntas
+      const qjAll = await api('quiz_questions_list', { method: 'GET', params: { quiz_id: quizId } });
+      const qsAll = qjAll.data || [];
+
+      // Sync de lo que está visible (la página actual) antes de enviar
+      const startIdx = (pager.page - 1) * PAGE_SIZE;
+      const pageQs = qsAll.slice(startIdx, startIdx + PAGE_SIZE);
+      syncDraftFromDOM(sectionId, pageQs);
+
+      // Construir answers desde draft (todas las preguntas)
       const answers = [];
-      for (const q of qs) {
+      for (const q of qsAll) {
+        const d = pager.draft[String(q.id)] || {};
         if (q.type === 'SHORT') {
-          const val = fd.get('short_' + q.id);
-          answers.push({ question_id: q.id, answer_text: String(val || '') });
+          answers.push({ question_id: q.id, answer_text: String(d.answer_text || '') });
         } else {
-          const val = fd.get('opt_' + q.id);
-          if (val) answers.push({ question_id: q.id, selected_option_id: Number(val) });
+          if (d.selected_option_id) {
+            answers.push({ question_id: q.id, selected_option_id: Number(d.selected_option_id) });
+          }
         }
       }
 
@@ -560,9 +849,19 @@ include __DIR__ . '/components/header.php';
         const sendFd = new FormData();
         sendFd.append('quiz_id', String(quizId));
         sendFd.append('answers', JSON.stringify(answers));
+
         await api('quiz_attempt_submit', { data: sendFd, isForm: true });
         if (msg) msg.textContent = 'Enviado.';
-        await loadStudentAttemptInto(sectionId, Number(quizId));
+
+        // opcional: limpiar draft después de enviar
+        if (__pagerState[sectionId]) {
+          __pagerState[sectionId].__initDraftDone = false;
+          __pagerState[sectionId].draft = {};
+          __pagerState[sectionId].page = 1;
+        }
+
+        const qj2 = await api('quizzes_getBySection', { method: 'GET', params: { section_id: sectionId } });
+        await loadStudentAttemptInto(sectionId, Number(quizId), qj2.data || null);
       } catch (err) {
         if (msg) msg.textContent = err?.json?.message || 'Error enviando intento';
       }
@@ -571,6 +870,7 @@ include __DIR__ . '/components/header.php';
 
     if (form.matches('form[data-kind="shortGradeForm"]')) {
       e.preventDefault();
+
       const quizId = form.getAttribute('data-quiz');
       const attemptId = form.getAttribute('data-attempt');
       const msg = form.querySelector(`[data-kind="msgGrade"][data-attempt="${attemptId}"]`);
@@ -591,8 +891,6 @@ include __DIR__ . '/components/header.php';
         });
 
         if (msg) msg.textContent = 'Calificación guardada.';
-
-        // refresca la lista de intentos (para ver estado/nota actualizada)
         await loadAttemptsInto(SECTION_ID, Number(quizId));
       } catch (err) {
         if (msg) msg.textContent = err?.json?.message || 'Error guardando calificación';
