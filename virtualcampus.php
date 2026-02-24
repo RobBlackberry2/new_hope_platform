@@ -9,7 +9,7 @@ if (!$u) {
 }
 include __DIR__ . '/components/header.php';
 $rol = $u['rol'] ?? '';
-$course_id = (int)($_GET['course_id'] ?? 0);
+$course_id = (int) ($_GET['course_id'] ?? 0);
 ?>
 <section class="card">
   <div style="display:flex; justify-content:space-between; gap:12px; align-items:center;">
@@ -29,7 +29,7 @@ $course_id = (int)($_GET['course_id'] ?? 0);
 </section>
 
 <script>
-let currentCourse = null;
+  let currentCourse = null;
   let currentSections = [];
   const MAX_WEEKS = 40; //Aqui se modificaria el numero de semanas
   // { [courseId: string]: Set<number> }
@@ -125,8 +125,8 @@ let currentCourse = null;
   function renderRecursosUI(s) {
     // upload solo admin/docente
     const upload = (IS_ADMIN || IS_DOCENTE) ? `
-    <form data-kind="uploadRes" data-section="${s.id}" style="margin-top:8px;">
-      <input type="file" name="file" required />
+    <form data-kind="uploadRes" data-section="${s.id}" method="post" enctype="multipart/form-data" style="margin-top:8px;">
+      <input type="file" name="files[]" multiple required>
       <button class="btn" type="submit">Subir recurso</button>
       <span class="muted" data-kind="msgUploadRes" data-section="${s.id}"></span>
     </form>
@@ -205,8 +205,8 @@ let currentCourse = null;
         Cargando información de tu entrega...
       </div>
 
-      <form data-kind="submissionUpload" data-section="${s.id}" style="margin-top:8px;">
-        <input type="file" name="file" required />
+      <form data-kind="submissionUpload" data-section="${s.id}" method="post" enctype="multipart/form-data" style="margin-top:8px;">
+        <input type="file" name="files[]" multiple required>
         <button class="btn" type="submit">Añadir entrega</button>
         <span class="muted" data-kind="msgSubmission" data-section="${s.id}"></span>
       </form>
@@ -462,7 +462,7 @@ let currentCourse = null;
       }
 
       const rows = items.map(r => {
-        const url = `uploads/${r.stored_name}`; // stored_name ya incluye "course_X/archivo.ext"
+        const url = `${window.__BASE_URL__}/router.php?action=resources_download&id=${r.id}`;
         const delBtn = (IS_ADMIN || IS_DOCENTE)
           ? `<button class="btn danger" data-kind="resDelete" data-id="${r.id}" data-section="${sectionId}">Eliminar</button>`
           : '';
@@ -470,9 +470,9 @@ let currentCourse = null;
         return `
         <div style="display:flex; justify-content:space-between; gap:10px; align-items:center; padding:6px 0; border-bottom:1px solid #eee;">
           <div>
-            <a href="${escapeHtml(url)}" target="_blank" rel="noopener">
+            <strong><a href="${escapeHtml(url)}" target="_blank" rel="noopener" style="color:#fff; text-decoration:none;">
               ${escapeHtml(r.original_name || ('Archivo #' + r.id))}
-            </a>
+            </a></strong>
             <div class="muted">
               ${humanSize(r.size)} · Subido por ${escapeHtml(r.uploaded_by_nombre || '')}
             </div>
@@ -534,6 +534,127 @@ let currentCourse = null;
         await loadResourcesIntoSection(sectionId);
       } catch (err) {
         alert(err?.json?.message || 'Error eliminando archivo');
+      }
+      return;
+    }
+  });
+
+  document.getElementById('detail').addEventListener('submit', async (e) => {
+    const form = e.target.closest('form[data-kind]');
+    if (!form) return;
+
+    const kind = form.getAttribute('data-kind');
+
+    // =========================
+    // SUBIR RECURSO (RECURSOS o instrucciones de TAREA)
+    // =========================
+    if (kind === 'uploadRes') {
+      e.preventDefault();
+
+      const sectionId = form.getAttribute('data-section');
+      const msg = document.querySelector(`[data-kind="msgUploadRes"][data-section="${sectionId}"]`);
+      if (msg) msg.textContent = '';
+
+      try {
+        const fd = new FormData(form);
+        fd.append('section_id', String(sectionId));
+
+        await api('resources_upload', { data: fd, isForm: true });
+
+        if (msg) msg.textContent = 'Archivo subido.';
+        form.reset();
+
+        // recargar lista de archivos
+        await loadResourcesIntoSection(sectionId);
+      } catch (err) {
+        console.error('Error resources_upload', err);
+        if (msg) msg.textContent = err?.json?.message || 'Error subiendo archivo';
+      }
+      return;
+    }
+
+    // =========================
+    // GUARDAR/ACTUALIZAR TAREA (docente/admin)
+    // =========================
+    if (kind === 'assignmentUpsert') {
+      e.preventDefault();
+
+      const sectionId = form.getAttribute('data-section');
+      const msg = document.querySelector(`[data-kind="msgAssignment"][data-section="${sectionId}"]`);
+      if (msg) msg.textContent = '';
+
+      try {
+        const fd = new FormData(form);
+        fd.append('section_id', String(sectionId));
+
+        await api('assignments_upsert', { data: fd, isForm: true });
+
+        if (msg) msg.textContent = 'Tarea guardada.';
+        // refresca la sección para que cargue assignment.id y habilite entregas/listado
+        await loadDetail(currentCourse);
+      } catch (err) {
+        console.error('Error assignments_upsert', err);
+        if (msg) msg.textContent = err?.json?.message || 'Error guardando tarea';
+      }
+      return;
+    }
+
+    // =========================
+    // SUBIR ENTREGA (estudiante)
+    // =========================
+    if (kind === 'submissionUpload') {
+      e.preventDefault();
+
+      const sectionId = form.getAttribute('data-section');
+      const msg = document.querySelector(`[data-kind="msgSubmission"][data-section="${sectionId}"]`);
+      if (msg) msg.textContent = '';
+
+      // el assignmentId está guardado en el contenedor de la sección (lo seteás en renderSectionBody)
+      const body = document.getElementById('section_body_' + sectionId);
+      const assignmentId = body?.getAttribute('data-assignment-id');
+
+      if (!assignmentId) {
+        if (msg) msg.textContent = 'Primero el docente debe guardar la tarea.';
+        return;
+      }
+
+      try {
+        const fd = new FormData(form);
+        fd.append('assignment_id', String(assignmentId));
+
+        await api('submissions_upload', { data: fd, isForm: true });
+
+        if (msg) msg.textContent = 'Entrega subida.';
+        form.reset();
+
+        await loadMySubmissionIntoSection(sectionId, assignmentId);
+      } catch (err) {
+        console.error('Error submissions_upload', err);
+        if (msg) msg.textContent = err?.message || err?.json?.message || 'Error subiendo entrega';
+      }
+      return;
+    }
+
+    // =========================
+    // PONER NOTA (docente/admin)
+    // =========================
+    if (kind === 'gradeSet') {
+      e.preventDefault();
+
+      const submissionId = form.getAttribute('data-submission');
+      const msg = document.querySelector(`[data-kind="msgGrade"][data-submission="${submissionId}"]`);
+      if (msg) msg.textContent = '';
+
+      try {
+        const fd = new FormData(form);
+        fd.append('submission_id', String(submissionId));
+
+        await api('grades_set', { data: fd, isForm: true });
+
+        if (msg) msg.textContent = 'Nota guardada.';
+      } catch (err) {
+        console.error('Error grades_set', err);
+        if (msg) msg.textContent = err?.json?.message || 'Error guardando nota';
       }
       return;
     }
@@ -628,7 +749,7 @@ let currentCourse = null;
     }
   }
 
-const COURSE_ID = <?php echo json_encode($course_id); ?>;
+  const COURSE_ID = <?php echo json_encode($course_id); ?>;
 
   async function initVirtualCampus() {
     const titleEl = document.getElementById('courseTitle');

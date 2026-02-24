@@ -7,14 +7,10 @@ class Submission {
 
   public function getMine(int $assignment_id, ?int $student_id, ?int $group_id): ?array {
     if ($group_id) {
-      $stmt = $this->db->prepare(
-        'SELECT * FROM submissions WHERE assignment_id = ? AND group_id = ? LIMIT 1'
-      );
+      $stmt = $this->db->prepare('SELECT * FROM submissions WHERE assignment_id = ? AND group_id = ? LIMIT 1');
       $stmt->bind_param('ii', $assignment_id, $group_id);
     } else {
-      $stmt = $this->db->prepare(
-        'SELECT * FROM submissions WHERE assignment_id = ? AND student_id = ? LIMIT 1'
-      );
+      $stmt = $this->db->prepare('SELECT * FROM submissions WHERE assignment_id = ? AND student_id = ? LIMIT 1');
       $stmt->bind_param('ii', $assignment_id, $student_id);
     }
     $stmt->execute();
@@ -27,11 +23,11 @@ class Submission {
     if ($existing) return (int)$existing['id'];
 
     $stmt = $this->db->prepare(
-      'INSERT INTO submissions (assignment_id, student_id, group_id, status) VALUES (?,?,?, "ENVIADA")'
+      'INSERT INTO submissions (assignment_id, student_id, group_id, status)
+       VALUES (?,?,?, "ENVIADA")'
     );
     $stmt->bind_param('iii', $assignment_id, $student_id, $group_id);
     if (!$stmt->execute()) {
-      // si falló por unique, intentamos leer de nuevo
       $existing2 = $this->getMine($assignment_id, $student_id, $group_id);
       if ($existing2) return (int)$existing2['id'];
       return false;
@@ -57,10 +53,40 @@ class Submission {
     return (int)$this->db->insert_id;
   }
 
-  public function getLatestFile(int $submission_id): ?array {
+  // NUEVO: lista todos los archivos
+  public function listFiles(int $submission_id): array {
     $stmt = $this->db->prepare(
-      'SELECT * FROM submission_files WHERE submission_id = ? ORDER BY id DESC LIMIT 1'
+      'SELECT * FROM submission_files WHERE submission_id = ? ORDER BY id DESC'
     );
+    $stmt->bind_param('i', $submission_id);
+    $stmt->execute();
+    $res = $stmt->get_result();
+    return $res ? $res->fetch_all(MYSQLI_ASSOC) : [];
+  }
+
+  // NUEVO: obtener archivo por id
+  public function getFile(int $file_id): ?array {
+    $stmt = $this->db->prepare('SELECT * FROM submission_files WHERE id = ? LIMIT 1');
+    $stmt->bind_param('i', $file_id);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    return $row ?: null;
+  }
+
+  // NUEVO: borrar archivo por id (retorna la fila para borrar archivo físico)
+  public function deleteFile(int $file_id): ?array {
+    $row = $this->getFile($file_id);
+    if (!$row) return null;
+
+    $stmt = $this->db->prepare('DELETE FROM submission_files WHERE id = ?');
+    $stmt->bind_param('i', $file_id);
+    $stmt->execute();
+
+    return $row;
+  }
+
+  public function getLatestFile(int $submission_id): ?array {
+    $stmt = $this->db->prepare('SELECT * FROM submission_files WHERE submission_id = ? ORDER BY id DESC LIMIT 1');
     $stmt->bind_param('i', $submission_id);
     $stmt->execute();
     $row = $stmt->get_result()->fetch_assoc();
@@ -80,6 +106,41 @@ class Submission {
     $stmt->execute();
     $res = $stmt->get_result();
     return $res ? $res->fetch_all(MYSQLI_ASSOC) : [];
+  }
+
+  // NUEVO: info para validar borrado por estudiante + due_at
+  public function getFileWithAssignmentAndCourse(int $file_id): ?array {
+    $stmt = $this->db->prepare(
+      'SELECT sf.*, sub.student_id, sub.group_id, a.due_at, s.course_id
+       FROM submission_files sf
+       JOIN submissions sub ON sub.id = sf.submission_id
+       JOIN assignments a ON a.id = sub.assignment_id
+       JOIN course_sections s ON s.id = a.section_id
+       WHERE sf.id = ?
+       LIMIT 1'
+    );
+    $stmt->bind_param('i', $file_id);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    return $row ?: null;
+  }
+
+  // NUEVO: info para descarga (incluye docente_user_id del curso)
+  public function getFileWithCourseTeacher(int $file_id): ?array {
+    $stmt = $this->db->prepare(
+      'SELECT sf.*, s.course_id, c.docente_user_id
+       FROM submission_files sf
+       JOIN submissions sub ON sub.id = sf.submission_id
+       JOIN assignments a ON a.id = sub.assignment_id
+       JOIN course_sections s ON s.id = a.section_id
+       JOIN courses c ON c.id = s.course_id
+       WHERE sf.id = ?
+       LIMIT 1'
+    );
+    $stmt->bind_param('i', $file_id);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    return $row ?: null;
   }
 
   public function getCourseInfoFromSubmission(int $submission_id): ?array {

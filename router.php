@@ -1,5 +1,10 @@
 <?php
-header('Content-Type: application/json; charset=utf-8');
+date_default_timezone_set('America/Costa_Rica');
+$action = $_GET['action'] ?? '';
+$downloadActions = ['resources_download','submission_files_download'];
+if (!in_array($action, $downloadActions, true)) {
+  header('Content-Type: application/json; charset=utf-8');
+}
 
 require_once __DIR__ . '/app/controllers/AuthController.php';
 require_once __DIR__ . '/app/controllers/UsersController.php';
@@ -9,6 +14,7 @@ require_once __DIR__ . '/app/controllers/ElearningController.php';
 require_once __DIR__ . '/app/controllers/VirtualCampusController.php';
 require_once __DIR__ . '/app/controllers/AssignementResourseController.php';
 require_once __DIR__ . '/app/controllers/QuizController.php';
+require_once __DIR__ . '/app/controllers/MicrosoftOAuthController.php';
 
 $action = $_GET['action'] ?? '';
 
@@ -20,6 +26,7 @@ $e = new ElearningController();
 $vc = new VirtualCampusController();
 $ar = new AssignementResourseController();
 $qz = new QuizController();
+$ms = new MicrosoftOAuthController();
 
 try {
     switch ($action) {
@@ -74,6 +81,9 @@ try {
         case 'resources_upload': $ar->uploadResource(); break;
         case 'resources_list': $ar->listResources(); break;
         case 'resources_delete': $ar->deleteResource(); break;
+        case 'resources_download': $ar->downloadResource(); break;
+
+
 
         // Tareas / Entregas / Notas / Grupos (movido a AssignementResourseController)
         case 'assignments_upsert': $ar->upsertAssignment(); break;
@@ -82,6 +92,8 @@ try {
         case 'submissions_upload': $ar->uploadSubmission(); break;
         case 'submissions_getMine': $ar->getMySubmission(); break;
         case 'submissions_listByAssignment': $ar->listSubmissionsByAssignment(); break;
+        case 'submission_files_delete': $ar->deleteSubmissionFile(); break;
+        case 'submission_files_download': $ar->downloadSubmissionFile(); break;
 
         case 'grades_set': $ar->setGrade(); break;
 
@@ -107,6 +119,9 @@ try {
         case 'quiz_attempts_list': $qz->listQuizAttempts(); break;
         case 'quiz_attempt_grade_short': $qz->gradeShort(); break;
         case 'quiz_attempt_review_student': $qz->studentAttemptReview(); break;
+
+        case 'onedrive_connect': $ms->connect(); break;
+        case 'onedrive_callback': $ms->callback(); break;
 
         default:
             http_response_code(404);

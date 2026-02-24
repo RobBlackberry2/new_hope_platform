@@ -93,7 +93,7 @@ CREATE TABLE IF NOT EXISTS course_resources (
   size INT NOT NULL,
   uploaded_by INT NOT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  storage_provider VARCHAR(20) NOT NULL DEFAULT 'local',
+  storage_provider VARCHAR(30) NOT NULL DEFAULT 'onedrive',
   storage_item_id VARCHAR(255) NULL,
   public_url TEXT NULL,
   CONSTRAINT fk_res_section FOREIGN KEY (section_id) REFERENCES course_sections(id)
@@ -229,6 +229,14 @@ CREATE TABLE quiz_answers (
   FOREIGN KEY (question_id) REFERENCES quiz_questions(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS onedrive_tokens (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  refresh_token TEXT NOT NULL,
+  access_token TEXT NULL,
+  expires_at DATETIME NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
 
 -- 3) Usuario inicial ADMIN
 -- Usuario: admin
