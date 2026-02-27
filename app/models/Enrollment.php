@@ -96,4 +96,10 @@ class Enrollment
         return $out;
     }
 
+    public function deleteByStudentId(int $student_id): bool
+    {
+        $stmt = $this->db->prepare('DELETE FROM enrollments WHERE student_id = ?');
+        $stmt->bind_param('i', $student_id);
+        return (bool) $stmt->execute();
+    }
 }

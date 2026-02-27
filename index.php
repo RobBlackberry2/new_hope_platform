@@ -27,14 +27,14 @@ include __DIR__ . '/components/header.php';
 
     ¡Nueva Esperanza, un lugar para mentes sin límites!</p>
   <div>
-    <div class="card" style="background:transparent;padding:14px">
+    <div class="card card-ghost p-14">
       <strong>MISIÓN</strong>
       <div style="color:var(--muted);font-size:13px;margin-top:6px">Brindar a la sociedad global ciudadanos con
         sensibilidad humana, mediante una formación educativa integral, a través de un enfoque humanista y socio
         constructivista, potenciando habilidades y competencias que le permitan asumir de manera
         interdisciplinaria y responsable los retos del siglo XXI.</div>
     </div>
-    <div class="card" style="background:transparent;padding:14px">
+    <div class="card card-ghost p-14">
       <strong>VISIÓN</strong>
       <div style="color:var(--muted);font-size:13px;margin-top:6px">Nueva Esperanza se visualiza como una
         institución líder, pionera e innovadora en metodologías de enseñanza y tecnologías aplicadas para el

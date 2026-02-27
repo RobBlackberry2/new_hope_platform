@@ -8,35 +8,108 @@ if (current_user()) {
 }
 include __DIR__ . '/components/header.php';
 ?>
+
+<style>
+  .auth-center-wrap {
+    min-height: 60vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+  }
+
+  .auth-center-form {
+    width: 100%;
+    max-width: 520px; /* un poco más ancho que login por más campos */
+    margin: 0 auto;
+  }
+
+  .auth-center-form .field {
+    margin-bottom: 12px;
+  }
+
+  .auth-center-form label {
+    display: block;
+    margin-bottom: 6px;
+    text-align: left;
+  }
+
+  .auth-center-form input {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .auth-center-form .btn-row {
+    display: flex;
+    justify-content: center;
+    margin-top: 12px;
+  }
+
+  .auth-center-form #msgCreate {
+    text-align: center;
+    margin-top: 10px;
+  }
+</style>
+
 <section class="card">
-  <h3>Crear usuario</h3>
-  <form id="formCreate" class="grid2">
-    <label>Username<input name="username" required /></label>
-    <label>Contraseña<input name="password" type="password" required /></label>
-    <label>Nombre<input name="nombre" required /></label>
-    <label>Correo<input name="correo" type="email" required /></label>
-    <label>Teléfono<input name="telefono" /></label>
-    <button class="btn" type="submit">Crear</button>
-    <div id="msgCreate" class="muted"></div>
-  </form>
+  <div class="auth-center-wrap">
+    <form id="formCreate" class="auth-center-form">
+      <h3 style="text-align:center; margin-bottom:16px;">Crear usuario</h3>
+
+      <div class="field">
+        <label for="username">Username</label>
+        <input id="username" name="username" required />
+      </div>
+
+      <div class="field">
+        <label for="password">Contraseña</label>
+        <input id="password" name="password" type="password" required />
+      </div>
+
+      <div class="field">
+        <label for="nombre">Nombre</label>
+        <input id="nombre" name="nombre" required />
+      </div>
+
+      <div class="field">
+        <label for="correo">Correo</label>
+        <input id="correo" name="correo" type="email" required />
+      </div>
+
+      <div class="field">
+        <label for="telefono">Teléfono</label>
+        <input id="telefono" name="telefono" />
+      </div>
+
+      <div class="btn-row">
+        <button class="btn" type="submit">Crear</button>
+      </div>
+
+      <div id="msgCreate" class="muted"></div>
+    </form>
+  </div>
 </section>
+
 <script>
-document.getElementById('formCreate').addEventListener('submit', async (e)=>{
+document.getElementById('formCreate').addEventListener('submit', async (e) => {
   e.preventDefault();
   const fd = new FormData(e.target);
   const msgCreate = document.getElementById('msgCreate');
   msgCreate.textContent = '';
+
   try {
-    await api('register', { data: fd, isForm:true }); // <-- aquí el cambio
+    await api('register', { data: fd, isForm: true });
     msgCreate.textContent = 'Usuario creado. Ahora inicia sesión.';
     e.target.reset();
 
-    //Redirigir al login automáticamente
-    setTimeout(()=> window.location.href = "<?= $base_url ?>/login.php", 800);
+    setTimeout(() => {
+      window.location.href = "<?= $base_url ?>/login.php";
+    }, 800);
 
   } catch (err) {
     msgCreate.textContent = err?.json?.message || 'Error creando usuario';
   }
 });
 </script>
+
 <?php include __DIR__ . '/components/footer.php'; ?>

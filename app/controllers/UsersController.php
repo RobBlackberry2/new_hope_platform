@@ -151,4 +151,12 @@ class UsersController
         echo json_encode(['status' => 'success', 'data' => $data]);
     }
 
+    public function listActive(): void
+    {
+        require_login();
+        $model = new User();
+        $limit = (int) ($_GET['limit'] ?? 1000);
+        echo json_encode(['status' => 'success', 'data' => $model->listActive($limit)]);
+    }
+
 }

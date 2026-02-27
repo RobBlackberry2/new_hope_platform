@@ -38,6 +38,7 @@ try {
 
         // Gestión de usuarios (ADMIN)
         case 'users_list': $users->list(); break;
+        case 'users_list_active': $users->listActive(); break;
         case 'users_list_for_students': $users->listForStudents(); break;
         case 'users_list_docentes': $users->listDocentes(); break;
         case 'users_create': $users->create(); break;

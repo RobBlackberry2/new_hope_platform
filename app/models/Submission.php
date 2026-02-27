@@ -157,4 +157,17 @@ class Submission {
     $row = $stmt->get_result()->fetch_assoc();
     return $row ?: null;
   }
+
+  public function isStudentMemberOfSubmissionGroup(int $group_id, int $student_id): bool {
+  $stmt = $this->db->prepare(
+    'SELECT 1
+     FROM submission_group_members
+     WHERE group_id = ? AND student_id = ?
+     LIMIT 1'
+  );
+  $stmt->bind_param('ii', $group_id, $student_id);
+  $stmt->execute();
+  $row = $stmt->get_result()->fetch_assoc();
+  return (bool)$row;
+}
 }

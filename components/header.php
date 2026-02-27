@@ -10,12 +10,14 @@ $u = current_user();
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>New Hope School | Plataforma</title>
-  <link rel="stylesheet" href="<?= $base_url ?>/css/app.css" />
+  <link rel="stylesheet" href="<?= $base_url ?>/css/app.css?v=nhp2" />
+  <link rel="stylesheet" href="css/app.css?v=nhp2" />
   <script>window.__BASE_URL__ = "<?= ($base_url ?? '') ?>";</script>
   <!-- app.js define api(), logout, etc. Cargado sin defer para poder usarlo en scripts inline -->
   <script src="<?= ($base_url ?? '') ?>/js/app.js"></script>
 </head>
-<body>
+<body class="nh-theme">
+
 <div class="container">
   <header class="topbar">
     <div class="brand">New Hope Platform</div>

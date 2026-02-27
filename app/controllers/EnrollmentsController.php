@@ -89,16 +89,29 @@ class EnrollmentsController
     {
         require_login();
         require_role(['ADMIN']);
+
         $id = (int) ($_POST['id'] ?? 0);
         if (!$id) {
             http_response_code(400);
             echo json_encode(['status' => 'error', 'message' => 'Falta id']);
             return;
         }
-        $model = new Student();
-        if ($model->delete($id))
+
+        $studentModel = new Student();
+        $enrModel = new Enrollment();
+
+        $student = $studentModel->get($id);
+        if (!$student) {
+            http_response_code(404);
+            echo json_encode(['status' => 'error', 'message' => 'Estudiante no existe']);
+            return;
+        }
+
+        $enrModel->deleteByStudentId($id);
+
+        if ($studentModel->delete($id)) {
             echo json_encode(['status' => 'success']);
-        else {
+        } else {
             http_response_code(500);
             echo json_encode(['status' => 'error', 'message' => 'No se pudo eliminar']);
         }
@@ -225,19 +238,38 @@ class EnrollmentsController
     {
         require_login();
         require_role(['ADMIN']);
+
         $id = (int) ($_POST['id'] ?? 0);
         if (!$id) {
             http_response_code(400);
             echo json_encode(['status' => 'error', 'message' => 'Falta id']);
             return;
         }
-        $model = new Enrollment();
-        if ($model->delete($id))
-            echo json_encode(['status' => 'success']);
-        else {
-            http_response_code(500);
-            echo json_encode(['status' => 'error', 'message' => 'No se pudo eliminar']);
+
+        $enrModel = new Enrollment();
+        $studentModel = new Student();
+
+        $enr = $enrModel->get($id);
+        if (!$enr) {
+            http_response_code(404);
+            echo json_encode(['status' => 'error', 'message' => 'Matrícula no existe']);
+            return;
         }
+
+        $student_id = (int) ($enr['student_id'] ?? 0);
+
+        if (!$enrModel->delete($id)) {
+            http_response_code(500);
+            echo json_encode(['status' => 'error', 'message' => 'No se pudo eliminar matrícula']);
+            return;
+        }
+
+        if ($student_id > 0) {
+            $enrModel->deleteByStudentId($student_id);
+            $studentModel->delete($student_id);
+        }
+
+        echo json_encode(['status' => 'success']);
     }
 
     public function updateStudentUserId(): void

@@ -2,24 +2,48 @@
 require_once __DIR__ . '/../models/User.php';
 require_once __DIR__ . '/../helpers/auth.php';
 
-class AuthController {
-    public function login(): void {
-        $username = $_POST['username'] ?? '';
-        $password = $_POST['password'] ?? '';
+class AuthController
+{
+    public function login(): void
+    {
+        $username = trim((string) ($_POST['username'] ?? ''));
+        $password = (string) ($_POST['password'] ?? '');
 
         $userModel = new User();
-        $u = $userModel->login($username, $password);
-        if ($u) {
-            ensure_session_started();
-            $_SESSION['user'] = $u;
-            echo json_encode(['status' => 'success', 'user' => $u]);
-        } else {
-            http_response_code(401);
-            echo json_encode(['status' => 'error', 'message' => 'Usuario o contraseña inválidos']);
+
+        // ✅ revisar usuario de forma explícita para distinguir INACTIVO
+        $raw = $userModel->getByUsernameRaw($username);
+
+        if ($raw) {
+            $estado = strtoupper((string) ($raw['estado'] ?? 'ACTIVO'));
+
+            // Si existe y contraseña es correcta pero está inactivo -> mensaje especial
+            if (password_verify($password, (string) $raw['password_hash'])) {
+                if ($estado !== 'ACTIVO') {
+                    http_response_code(401);
+                    echo json_encode([
+                        'status' => 'error',
+                        'message' => 'Usuario inactivo, dirijase a la dirección del colegio'
+                    ]);
+                    return;
+                }
+
+
+                
+                unset($raw['password_hash']);
+                ensure_session_started();
+                $_SESSION['user'] = $raw;
+                echo json_encode(['status' => 'success', 'user' => $raw]);
+                return;
+            }
         }
+
+        http_response_code(401);
+        echo json_encode(['status' => 'error', 'message' => 'Usuario o contraseña inválidos']);
     }
 
-    public function me(): void {
+    public function me(): void
+    {
         $u = current_user();
         if (!$u) {
             http_response_code(401);
@@ -29,14 +53,16 @@ class AuthController {
         echo json_encode(['status' => 'success', 'user' => $u]);
     }
 
-    public function logout(): void {
+    public function logout(): void
+    {
         ensure_session_started();
         session_destroy();
         echo json_encode(['status' => 'success']);
     }
 
     // Registro básico (por defecto ESTUDIANTE) Los docentes deben ser registrados desde la administracion o su rol debe ser actualizado
-    public function register(): void {
+    public function register(): void
+    {
         $username = $_POST['username'] ?? '';
         $password = $_POST['password'] ?? '';
         $nombre = $_POST['nombre'] ?? '';

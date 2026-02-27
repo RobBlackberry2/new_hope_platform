@@ -44,22 +44,26 @@ include __DIR__ . '/components/header.php';
 
 <section class="card">
   <h3>Estudiantes</h3>
+  <input type="text" id="searchStudents" placeholder="Buscar estudiante..." style="width:100%; margin-bottom:10px;">
   <div class="muted" id="msg"></div>
   <div style="overflow:auto;">
     <table class="table" id="tblStudents"></table>
   </div>
+  <div id="paginationStudents" style="margin-top:15px; text-align:center;"></div>
 </section>
 
 <section class="card">
   <h3>Matrículas</h3>
+  <input type="text" id="searchEnrollments" placeholder="Buscar matrícula..." style="width:100%; margin-bottom:10px;">
   <div class="muted" id="msgEnr"></div>
   <div style="overflow:auto;">
     <table class="table" id="tblEnr"></table>
   </div>
+  <div id="paginationEnrollments" style="margin-top:15px; text-align:center;"></div>
 </section>
 
 <div id="modalEdit" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.9); padding:20px;">
-  <div class="card" style="max-width:700px; margin:40px auto;">
+  <div class="card modal-card">
     <h3>Editar estudiante</h3>
     <form id="formEditStudent" class="grid2">
       <input type="hidden" name="id" />
@@ -111,6 +115,19 @@ include __DIR__ . '/components/header.php';
   const msgCupos = document.getElementById('msgCupos');
   let USERS = [];
 
+
+  let STUDENTS_DATA = [];
+  let ENROLLMENTS_DATA = [];
+
+  let studentsPage = 1;
+  let enrollmentsPage = 1;
+  const PER_PAGE = 5;
+
+  const searchStudents = document.getElementById('searchStudents');
+  const searchEnrollments = document.getElementById('searchEnrollments');
+  const paginationStudents = document.getElementById('paginationStudents');
+  const paginationEnrollments = document.getElementById('paginationEnrollments');
+
   function studentRow(s) {
     return `<tr>
     <td>${s.nombre || ''}</td>
@@ -146,13 +163,158 @@ include __DIR__ . '/components/header.php';
   </tr>`;
   }
 
+  function drawPager(container, currentPage, totalItems, perPage, onPageClick) {
+    container.innerHTML = '';
+
+    const totalPages = Math.max(1, Math.ceil(totalItems / perPage));
+    if (totalPages <= 1) return;
+
+    const wrap = document.createElement('div');
+    wrap.style.display = 'flex';
+    wrap.style.flexWrap = 'wrap';
+    wrap.style.gap = '6px';
+    wrap.style.alignItems = 'center';
+    wrap.style.justifyContent = 'center';
+
+    const info = document.createElement('span');
+    info.textContent = `Pág. ${currentPage} de ${totalPages}`;
+    info.style.padding = '6px 10px';
+    info.style.borderRadius = '8px';
+    info.style.background = 'rgba(255,255,255,0.08)';
+    info.style.border = '1px solid rgba(255,255,255,0.12)';
+    info.style.color = '#e5eefc';
+    info.style.fontSize = '13px';
+    info.style.lineHeight = '1';
+    wrap.appendChild(info);
+
+    function addBtn(label, page, opts = {}) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'btn btn-sm';
+      b.textContent = label;
+
+      b.style.minWidth = '32px';
+      b.style.height = '30px';
+      b.style.padding = '0 10px';
+      b.style.borderRadius = '9px';
+      b.style.border = '1px solid rgba(79, 209, 255, 0.18)';
+      b.style.background = 'rgba(14, 36, 66, 0.9)';
+      b.style.color = '#dbeafe';
+      b.style.boxShadow = 'inset 0 0 0 1px rgba(255,255,255,0.02)';
+      b.style.cursor = 'pointer';
+
+      if (opts.disabled) {
+        b.disabled = true;
+        b.style.opacity = '0.45';
+        b.style.cursor = 'not-allowed';
+      }
+
+      if (opts.active) {
+        b.style.background = 'linear-gradient(180deg, #4ade80, #22c55e)';
+        b.style.border = '1px solid rgba(34, 197, 94, 0.65)';
+        b.style.color = '#052e16';
+        b.style.fontWeight = '700';
+        b.style.boxShadow = '0 0 0 2px rgba(74,222,128,0.12)';
+      }
+
+      if (!opts.disabled && typeof page === 'number') {
+        b.onclick = () => onPageClick(page);
+      }
+
+      wrap.appendChild(b);
+    }
+
+    function addEllipsis() {
+      const el = document.createElement('span');
+      el.textContent = '...';
+      el.style.padding = '0 4px';
+      el.style.color = 'rgba(219,234,254,0.75)';
+      el.style.fontWeight = '600';
+      wrap.appendChild(el);
+    }
+
+    const pages = new Set();
+
+    for (let i = 1; i <= Math.min(3, totalPages); i++) pages.add(i);
+    for (let i = Math.max(1, currentPage - 2); i <= Math.min(totalPages, currentPage + 2); i++) pages.add(i);
+    for (let i = Math.max(1, totalPages - 2); i <= totalPages; i++) pages.add(i);
+
+    const sorted = Array.from(pages).sort((a, b) => a - b);
+
+    addBtn('«', 1, { disabled: currentPage === 1 });
+    addBtn('<', currentPage - 1, { disabled: currentPage === 1 });
+
+    let prev = 0;
+    for (const p of sorted) {
+      if (prev && p - prev > 1) addEllipsis();
+      addBtn(String(p), p, { active: p === currentPage });
+      prev = p;
+    }
+
+    addBtn('>', currentPage + 1, { disabled: currentPage === totalPages });
+    addBtn('»', totalPages, { disabled: currentPage === totalPages });
+
+    container.appendChild(wrap);
+  }
+
+  function renderStudentsTable(filtered) {
+    const start = (studentsPage - 1) * PER_PAGE;
+    const end = start + PER_PAGE;
+    const rows = filtered.slice(start, end);
+
+    tbl.innerHTML = `<tr><th>Nombre</th><th>Cédula</th><th>Grado</th><th>Sección</th><th>User</th><th></th></tr>` +
+      rows.map(studentRow).join('');
+
+    drawPager(paginationStudents, studentsPage, filtered.length, PER_PAGE, (p) => {
+      studentsPage = p;
+      applyStudentsFilter();
+    });
+  }
+
+  function renderEnrollmentsTable(filtered) {
+    const start = (enrollmentsPage - 1) * PER_PAGE;
+    const end = start + PER_PAGE;
+    const rows = filtered.slice(start, end);
+
+    tblEnr.innerHTML = `<tr><th>Estudiante</th><th>Grado</th><th>Año</th><th>Estado</th><th></th></tr>` +
+      rows.map(enrRow).join('');
+
+    drawPager(paginationEnrollments, enrollmentsPage, filtered.length, PER_PAGE, (p) => {
+      enrollmentsPage = p;
+      applyEnrollmentsFilter();
+    });
+  }
+
+  function applyStudentsFilter() {
+    const q = (searchStudents?.value || '').toLowerCase().trim();
+    const filtered = STUDENTS_DATA.filter(s =>
+      (s.nombre || '').toLowerCase().includes(q) ||
+      (s.cedula || '').toLowerCase().includes(q) ||
+      String(s.grado || '').includes(q) ||
+      (s.seccion || '').toLowerCase().includes(q)
+    );
+    renderStudentsTable(filtered);
+  }
+
+  function applyEnrollmentsFilter() {
+    const q = (searchEnrollments?.value || '').toLowerCase().trim();
+    const filtered = ENROLLMENTS_DATA.filter(e =>
+      (e.student_nombre || '').toLowerCase().includes(q) ||
+      String(e.grado || '').includes(q) ||
+      String(e.year || '').includes(q) ||
+      (e.seccion || '').toLowerCase().includes(q) ||
+      (e.estado || '').toLowerCase().includes(q)
+    );
+    renderEnrollmentsTable(filtered);
+  }
 
   async function loadStudents() {
     msg.textContent = 'Cargando...';
     try {
       const j = await api('students_list', { method: 'GET', params: { limit: 200 } });
-      const data = j.data || [];
-      tbl.innerHTML = `<tr><th>Nombre</th><th>Cédula</th><th>Grado</th><th>Sección</th><th>User</th><th></th></tr>` + data.map(studentRow).join('');
+      STUDENTS_DATA = j.data || [];
+      studentsPage = 1;
+      applyStudentsFilter();
       msg.textContent = '';
     } catch (err) {
       msg.textContent = err?.json?.message || 'Error cargando estudiantes';
@@ -186,8 +348,9 @@ include __DIR__ . '/components/header.php';
     msgEnr.textContent = 'Cargando...';
     try {
       const j = await api('enrollments_list', { method: 'GET', params: { limit: 200 } });
-      const data = j.data || [];
-      tblEnr.innerHTML = `<tr><th>Estudiante</th><th>Grado</th><th>Año</th><th>Estado</th><th></th></tr>` + data.map(enrRow).join('');
+      ENROLLMENTS_DATA = j.data || [];
+      enrollmentsPage = 1;
+      applyEnrollmentsFilter();
       msgEnr.textContent = '';
     } catch (err) {
       msgEnr.textContent = err?.json?.message || 'Error cargando matrículas';
@@ -356,6 +519,20 @@ include __DIR__ . '/components/header.php';
     } catch (err) {
       msgCupos.textContent = err?.json?.message || 'Error cargando cupos';
     }
+  }
+
+  if (searchStudents) {
+    searchStudents.addEventListener('input', () => {
+      studentsPage = 1;
+      applyStudentsFilter();
+    });
+  }
+
+  if (searchEnrollments) {
+    searchEnrollments.addEventListener('input', () => {
+      enrollmentsPage = 1;
+      applyEnrollmentsFilter();
+    });
   }
 
   (async () => {

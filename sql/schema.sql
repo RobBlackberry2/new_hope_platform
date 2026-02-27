@@ -109,8 +109,8 @@ CREATE TABLE assignments (
   instructions TEXT NULL,
   due_at DATETIME NULL,
   is_group TINYINT(1) NOT NULL DEFAULT 0,
-  weight_percent INT NULL,            -- % dentro del curso (si aplica)
-  max_score INT NOT NULL DEFAULT 100, -- base 100 por defecto
+  weight_percent INT NULL,            
+  max_score INT NOT NULL DEFAULT 100, 
   passing_score INT NOT NULL DEFAULT 70,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (section_id) REFERENCES course_sections(id) ON DELETE CASCADE
@@ -160,9 +160,9 @@ CREATE TABLE submission_files (
 CREATE TABLE grades (
   id INT AUTO_INCREMENT PRIMARY KEY,
   submission_id INT NOT NULL UNIQUE,
-  score INT NOT NULL,        -- 0..max_score
+  score INT NOT NULL,  
   feedback TEXT NULL,
-  graded_by INT NOT NULL,    -- user_id (docente/admin)
+  graded_by INT NOT NULL,   
   graded_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (submission_id) REFERENCES submissions(id) ON DELETE CASCADE,
   FOREIGN KEY (graded_by) REFERENCES users(id) ON DELETE CASCADE
@@ -173,10 +173,11 @@ CREATE TABLE quizzes (
   section_id INT NOT NULL,
   title VARCHAR(200) NOT NULL,
   instructions TEXT NULL,
-  time_limit_minutes INT NULL,          -- null = sin límite
+  time_limit_minutes INT NULL,         
   available_from DATETIME NULL,
-  due_at DATETIME NULL,                  -- fecha cierre / entrega
-  passing_score INT NOT NULL DEFAULT 70, -- aprueba >= 70
+  due_at DATETIME NULL,              
+  weight_percent INT NULL,
+  passing_score INT NOT NULL DEFAULT 70,
   show_results ENUM('NO','AFTER_SUBMIT','AFTER_DUE') NOT NULL DEFAULT 'AFTER_SUBMIT',
   is_exam TINYINT(1) NOT NULL DEFAULT 0,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

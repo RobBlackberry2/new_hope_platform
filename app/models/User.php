@@ -55,11 +55,56 @@ class User
         return $row ?: null;
     }
 
+    public function getByUsernameRaw(string $username): ?array
+{
+    $stmt = $this->db->prepare('SELECT id, username, password_hash, nombre, correo, telefono, rol, estado FROM users WHERE username = ? LIMIT 1');
+    $stmt->bind_param('s', $username);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    return $row ?: null;
+}
+
     public function list(int $limit = 200): array
     {
         $limit = max(1, min(1000, $limit));
         $result = $this->db->query('SELECT id, username, nombre, correo, telefono, rol, estado, created_at FROM users ORDER BY id DESC LIMIT ' . $limit);
         return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+    }
+
+        public function listForStudents(int $limit = 500): array
+    {
+        $limit = max(1, min(2000, $limit));
+        $sql = "SELECT id, username, nombre, rol, estado
+            FROM users
+            WHERE rol = 'ESTUDIANTE'
+            ORDER BY estado ASC, nombre ASC
+            LIMIT " . (int) $limit;
+        $res = $this->db->query($sql);
+        return $res ? $res->fetch_all(MYSQLI_ASSOC) : [];
+    }
+
+    public function listDocentes(int $limit = 500): array
+    {
+        $limit = max(1, min(2000, $limit));
+        $sql = "SELECT id, username, nombre
+          FROM users
+          WHERE rol = 'DOCENTE'
+          ORDER BY nombre ASC
+          LIMIT " . (int) $limit;
+        $res = $this->db->query($sql);
+        return $res ? $res->fetch_all(MYSQLI_ASSOC) : [];
+    }
+
+    public function listActive(int $limit = 1000): array
+    {
+        $limit = max(1, min(5000, $limit));
+        $sql = "SELECT id, username, nombre, rol, estado
+            FROM users
+            WHERE estado = 'ACTIVO'
+            ORDER BY nombre ASC, username ASC
+            LIMIT " . (int) $limit;
+        $res = $this->db->query($sql);
+        return $res ? $res->fetch_all(MYSQLI_ASSOC) : [];
     }
 
     public function update(int $id, string $nombre, string $correo, ?string $telefono): bool
@@ -88,30 +133,6 @@ class User
         $stmt = $this->db->prepare('DELETE FROM users WHERE id = ?');
         $stmt->bind_param('i', $id);
         return (bool) $stmt->execute();
-    }
-
-    public function listForStudents(int $limit = 500): array
-    {
-        $limit = max(1, min(2000, $limit));
-        $sql = "SELECT id, username, nombre, rol, estado
-            FROM users
-            WHERE rol = 'ESTUDIANTE'
-            ORDER BY estado ASC, nombre ASC
-            LIMIT " . (int) $limit;
-        $res = $this->db->query($sql);
-        return $res ? $res->fetch_all(MYSQLI_ASSOC) : [];
-    }
-
-    public function listDocentes(int $limit = 500): array
-    {
-        $limit = max(1, min(2000, $limit));
-        $sql = "SELECT id, username, nombre
-          FROM users
-          WHERE rol = 'DOCENTE'
-          ORDER BY nombre ASC
-          LIMIT " . (int) $limit;
-        $res = $this->db->query($sql);
-        return $res ? $res->fetch_all(MYSQLI_ASSOC) : [];
     }
 
 

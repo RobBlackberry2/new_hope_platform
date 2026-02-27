@@ -84,7 +84,6 @@ include __DIR__ . '/components/header.php';
         const checked = box.querySelector(`input[type="radio"][name="opt_${qid}"]:checked`);
         if (checked) {
           pager.draft[qid] = { ...(pager.draft[qid] || {}), selected_option_id: Number(checked.value) };
-        } else {
         }
       }
     }
@@ -93,6 +92,78 @@ include __DIR__ . '/components/header.php';
   function toLocalInputValue(dt) {
     if (!dt) return '';
     return String(dt).replace(' ', 'T').slice(0, 16);
+  }
+
+  // =========================
+  // Countdown (estudiante)
+  // =========================
+  window.__QUIZ_COUNTDOWNS__ = window.__QUIZ_COUNTDOWNS__ || {};
+
+  function clearQuizCountdown(sectionId) {
+    const key = String(sectionId);
+    if (window.__QUIZ_COUNTDOWNS__[key]) {
+      clearInterval(window.__QUIZ_COUNTDOWNS__[key]);
+      delete window.__QUIZ_COUNTDOWNS__[key];
+    }
+  }
+
+  function formatRemaining(ms) {
+    const totalSec = Math.max(0, Math.floor(ms / 1000));
+    const mm = Math.floor(totalSec / 60);
+    const ss = totalSec % 60;
+    return `${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}`;
+  }
+
+  function startQuizCountdown(sectionId, quizCfg, attempt) {
+    clearQuizCountdown(sectionId);
+
+    const lineEl = document.querySelector(`[data-kind="quizTimeLine"][data-section="${sectionId}"]`);
+    const localBoxTimer = document.querySelector(`[data-kind="attemptCountdown"][data-section="${sectionId}"]`);
+
+    const limitMin = Number(quizCfg?.time_limit_minutes || 0);
+    const startedAt = attempt?.started_at ? new Date(String(attempt.started_at).replace(' ', 'T')) : null;
+
+    if (!lineEl || !startedAt || !limitMin || limitMin <= 0) {
+      if (lineEl) lineEl.textContent = quizCfg?.time_limit_minutes ? `Tiempo: ${quizCfg.time_limit_minutes} min` : 'Tiempo: Sin límite';
+      if (localBoxTimer) localBoxTimer.textContent = '';
+      return;
+    }
+
+    const endMs = startedAt.getTime() + (limitMin * 60 * 1000);
+
+    const paint = () => {
+      const nowMs = Date.now();
+      const remainingMs = endMs - nowMs;
+      const remainingText = formatRemaining(remainingMs);
+
+      lineEl.textContent = `Tiempo restante: ${remainingText}`;
+      if (localBoxTimer) localBoxTimer.textContent = `Tiempo restante: ${remainingText}`;
+
+      const isRed = remainingMs <= (5 * 60 * 1000);
+      lineEl.style.color = isRed ? '#ef4444' : '';
+      lineEl.style.fontWeight = isRed ? '700' : '';
+
+      if (localBoxTimer) {
+        localBoxTimer.style.color = isRed ? '#ef4444' : '';
+        localBoxTimer.style.fontWeight = isRed ? '700' : '';
+      }
+
+      if (remainingMs <= 0) {
+        clearQuizCountdown(sectionId);
+        lineEl.textContent = 'Tiempo restante: 00:00';
+        if (localBoxTimer) localBoxTimer.textContent = 'Tiempo restante: 00:00';
+
+        // Opcional UX: deshabilitar botón enviar en UI (backend ya bloquea igual)
+        const submitBtn = document.querySelector(`#attemptBox_${sectionId} form[data-kind="attemptSubmit"] button[type="submit"]`);
+        if (submitBtn) submitBtn.disabled = true;
+
+        const msg = document.querySelector(`[data-kind="msgSubmitAttempt"][data-section="${sectionId}"]`);
+        if (msg && !msg.textContent) msg.textContent = 'Tiempo vencido.';
+      }
+    };
+
+    paint();
+    window.__QUIZ_COUNTDOWNS__[String(sectionId)] = setInterval(paint, 1000);
   }
 
   async function initQuizPage() {
@@ -128,18 +199,25 @@ include __DIR__ . '/components/header.php';
     const q = quiz || {};
     return `
       <div class="muted">${escapeHtml(q.title || SECTION_TITLE || '')}</div>
-      <form data-kind="quizUpsert" data-section="${sectionId}" class="grid2" style="margin-top:8px;">
+      <form data-kind="quizUpsert" data-section="${sectionId}" class="grid2 mt-8">
         <label>Título<input name="title" required value="${escapeHtml(q.title || SECTION_TITLE || '')}"/></label>
+
         <label>Tiempo (min)
           <input name="time_limit_minutes" type="number" min="1" required value="${q.time_limit_minutes ?? 60}"/>
         </label>
+
         <label>Disponible desde (opcional)
           <input name="available_from" type="datetime-local" value="${escapeHtml(toLocalInputValue(q.available_from || ''))}">
         </label>
+
         <label>Cierra (due_at) (opcional)
           <input name="due_at" type="datetime-local" value="${escapeHtml(toLocalInputValue(q.due_at || ''))}">
         </label>
-        <label>Aprobación<input name="passing_score" type="number" min="0" max="100" value="${q.passing_score ?? 70}"/></label>
+
+        <label>Peso (% del curso)
+          <input name="weight_percent" type="number" min="0" max="100" value="${escapeHtml(q.weight_percent ?? '')}" />
+        </label>
+
         <label>Mostrar resultados
           <select name="show_results">
             <option value="NO" ${(q.show_results === 'NO') ? 'selected' : ''}>NO</option>
@@ -147,9 +225,11 @@ include __DIR__ . '/components/header.php';
             <option value="AFTER_DUE" ${(q.show_results === 'AFTER_DUE') ? 'selected' : ''}>DESPUÉS DE CIERRE</option>
           </select>
         </label>
-        <label style="grid-column:1/-1">Instrucciones
+
+        <label class="span-all">Instrucciones
           <textarea name="instructions" rows="3">${escapeHtml(q.instructions || '')}</textarea>
         </label>
+
         <input type="hidden" name="section_id" value="${sectionId}">
 
         <div style="grid-column:1/-1; display:flex; gap:10px; align-items:center;">
@@ -159,11 +239,11 @@ include __DIR__ . '/components/header.php';
       </form>
 
       <hr class="sep" />
-        <div id="lockMsg_${sectionId}"></div>
+      <div id="lockMsg_${sectionId}"></div>
 
-        <div id="questionsCard_${sectionId}" class="card" style="padding:10px;">
+      <div id="questionsCard_${sectionId}" class="card card-tight">
         <strong>Preguntas</strong>
-        <form data-kind="questionUpsert" data-section="${sectionId}" style="margin-top:8px;" class="grid2">
+        <form data-kind="questionUpsert" data-section="${sectionId}" class="grid2 mt-8">
           <label>Tipo
             <select name="type">
               <option value="MCQ">Selección</option>
@@ -172,36 +252,45 @@ include __DIR__ . '/components/header.php';
             </select>
           </label>
           <label>Puntos<input name="points" type="number" min="1" value="10"></label>
-          <label style="grid-column:1/-1">Pregunta<textarea name="question_text" rows="2" required></textarea></label>
+          <label class="span-all">Pregunta<textarea name="question_text" rows="2" required></textarea></label>
           <label>Orden<input name="orden" type="number" value="0"></label>
           <button class="btn" type="submit">Agregar pregunta</button>
           <span class="muted" data-kind="msgQuestion" data-section="${sectionId}"></span>
         </form>
-        <div id="questions_${sectionId}" class="muted" style="margin-top:10px;">Cargando preguntas...</div>
+        <div id="questions_${sectionId}" class="muted mt-10">Cargando preguntas...</div>
       </div>
 
       <hr class="sep" />
-      <div class="card" style="padding:10px;">
+      <div class="card card-tight">
         <strong>Intentos</strong>
-        <div id="attempts_${sectionId}" class="muted" style="margin-top:8px;">(Guarda el quiz para ver intentos)</div>
+        <div id="attempts_${sectionId}" class="muted mt-8">(Guarda el quiz para ver intentos)</div>
       </div>
     `;
   }
 
   function renderQuizStudentUI(sectionId, quiz) {
     if (!quiz) return `<div class="muted">Aún no hay quiz configurado.</div>`;
+
     return `
       <div class="muted">${escapeHtml(quiz.title || '')}</div>
-      ${quiz.instructions ? `<div style="margin-top:6px;">${escapeHtml(quiz.instructions)}</div>` : ''}
-      <div class="muted" style="margin-top:6px;">
-        ${quiz.time_limit_minutes ? `Tiempo: ${quiz.time_limit_minutes} min.` : 'Sin límite de tiempo.'}
-        ${quiz.due_at ? ` — Cierra: ${escapeHtml(quiz.due_at)}` : ''}
+      ${quiz.instructions ? `<div class="mt-6">${escapeHtml(quiz.instructions)}</div>` : ''}
+
+      <div class="muted mt-6">
+        ${quiz.due_at ? `Cierra: ${escapeHtml(quiz.due_at)}` : 'Cierra: Sin fecha límite'}
       </div>
-      <div style="margin-top:10px;">
+
+      <div class="muted mt-6" data-kind="quizTimeLine" data-section="${sectionId}">
+        ${quiz.time_limit_minutes ? `Tiempo: ${quiz.time_limit_minutes} min` : 'Tiempo: Sin límite'}
+      </div>
+
+      ${quiz.weight_percent != null ? `<div class="muted mt-6">Valor en promedio: ${escapeHtml(quiz.weight_percent)}%</div>` : ''}
+
+      <div class="mt-10">
         <button class="btn" data-kind="attemptStart" data-section="${sectionId}" data-quiz="${quiz.id}">Iniciar intento</button>
         <span class="muted" data-kind="msgAttempt" data-section="${sectionId}"></span>
       </div>
-      <div id="attemptBox_${sectionId}" style="margin-top:10px;"></div>
+
+      <div id="attemptBox_${sectionId}" class="mt-10"></div>
     `;
   }
 
@@ -234,18 +323,18 @@ include __DIR__ . '/components/header.php';
         `;
 
       return `
-        <div class="card" style="margin-top:8px; padding:10px;">
+        <div class="card card-tight mt-8">
           <div style="display:flex; justify-content:space-between; gap:8px;">
             <div>
               <strong>[${escapeHtml(q.type)}] (${q.points} pts)</strong>
-              <div style="margin-top:6px;">${escapeHtml(q.question_text)}</div>
+              <div class="mt-6">${escapeHtml(q.question_text)}</div>
             </div>
             <button class="btn danger" data-kind="qDel" data-id="${q.id}" data-section="${sectionId}" data-quiz="${quizId}"
               ${window.__QUIZ_LOCKED__ ? 'disabled' : ''}>
               Eliminar
             </button>
           </div>
-          <div style="margin-top:8px;">${optionsHtml}</div>
+          <div class="mt-8">${optionsHtml}</div>
         </div>
       `;
     }).join('');
@@ -262,20 +351,20 @@ include __DIR__ . '/components/header.php';
     if (!rows.length) { box.textContent = 'Sin intentos.'; return; }
 
     box.innerHTML = rows.map(r => `
-  <div class="card" style="margin-top:8px; padding:10px;">
-    <div style="display:flex; justify-content:space-between; gap:10px; align-items:center;">
-      <div>
-        <strong>${escapeHtml(r.student_nombre || '')}</strong>
-        <div class="muted">Estado: ${escapeHtml(r.status)} — Nota: ${r.score}</div>
-        <div class="muted">Inicio: ${escapeHtml(r.started_at)} — Fin: ${escapeHtml(r.finished_at || '')}</div>
+      <div class="card card-tight mt-8">
+        <div style="display:flex; justify-content:space-between; gap:10px; align-items:center;">
+          <div>
+            <strong>${escapeHtml(r.student_nombre || '')}</strong>
+            <div class="muted">Estado: ${escapeHtml(r.status)} — Nota: ${r.score}</div>
+            <div class="muted">Inicio: ${escapeHtml(r.started_at)} — Fin: ${escapeHtml(r.finished_at || '')}</div>
+          </div>
+          <button class="btn" data-kind="attemptReview" data-attempt="${r.id}" data-quiz="${quizId}">
+            Revisar
+          </button>
+        </div>
+        <div id="review_${r.id}" style="margin-top:10px; display:none;"></div>
       </div>
-      <button class="btn" data-kind="attemptReview" data-attempt="${r.id}" data-quiz="${quizId}">
-        Revisar
-      </button>
-    </div>
-    <div id="review_${r.id}" style="margin-top:10px; display:none;"></div>
-  </div>
-`).join('');
+    `).join('');
   }
 
   function renderAttemptReviewUI(payload, quizId, attemptId) {
@@ -291,22 +380,22 @@ include __DIR__ . '/components/header.php';
 
       if (q.type === 'SHORT') {
         return `
-        <div class="card" style="padding:10px; margin-top:8px;">
-          <div><strong>[SHORT] (${maxPts} pts)</strong></div>
-          <div style="margin-top:6px;">${escapeHtml(q.question_text)}</div>
-          <div class="muted" style="margin-top:6px;">Respuesta del estudiante:</div>
-          <div style="margin-top:4px;">${escapeHtml(a.answer_text || '(sin respuesta)')}</div>
+          <div class="card" style="padding:10px; margin-top:8px;">
+            <div><strong>[SHORT] (${maxPts} pts)</strong></div>
+            <div class="mt-6">${escapeHtml(q.question_text)}</div>
+            <div class="muted mt-6">Respuesta del estudiante:</div>
+            <div style="margin-top:4px;">${escapeHtml(a.answer_text || '(sin respuesta)')}</div>
 
-          <div style="margin-top:8px; display:flex; gap:10px; align-items:center;">
-            <label style="display:flex; gap:8px; align-items:center;">
-              Puntos:
-              <input type="number" min="0" max="${maxPts}" value="${Number(a.points_awarded || 0)}"
-                     data-grade-qid="${q.id}" style="width:90px;">
-            </label>
-            <span class="muted">/ ${maxPts}</span>
+            <div style="margin-top:8px; display:flex; gap:10px; align-items:center;">
+              <label class="row gap-8 align-center">
+                Puntos:
+                <input type="number" min="0" max="${maxPts}" value="${Number(a.points_awarded || 0)}"
+                       data-grade-qid="${q.id}" style="width:90px;">
+              </label>
+              <span class="muted">/ ${maxPts}</span>
+            </div>
           </div>
-        </div>
-      `;
+        `;
       }
 
       const selId = a.selected_option_id ? String(a.selected_option_id) : '';
@@ -314,29 +403,29 @@ include __DIR__ . '/components/header.php';
       const correct = (q.options || []).find(o => String(o.id) === String(q.correct_option_id || ''));
 
       return `
-      <div class="card" style="padding:10px; margin-top:8px;">
-        <div><strong>[${escapeHtml(q.type)}] (${maxPts} pts)</strong></div>
-        <div style="margin-top:6px;">${escapeHtml(q.question_text)}</div>
-        <div class="muted" style="margin-top:6px;">Elegida: ${escapeHtml(chosen?.option_text || '(sin respuesta)')}</div>
-        <div class="muted">Correcta: ${escapeHtml(correct?.option_text || '(no definida)')}</div>
-        <div class="muted">Otorgados: ${Number(a.points_awarded || 0)} / ${maxPts}</div>
-      </div>
-    `;
+        <div class="card" style="padding:10px; margin-top:8px;">
+          <div><strong>[${escapeHtml(q.type)}] (${maxPts} pts)</strong></div>
+          <div class="mt-6">${escapeHtml(q.question_text)}</div>
+          <div class="muted mt-6">Elegida: ${escapeHtml(chosen?.option_text || '(sin respuesta)')}</div>
+          <div class="muted">Correcta: ${escapeHtml(correct?.option_text || '(no definida)')}</div>
+          <div class="muted">Otorgados: ${Number(a.points_awarded || 0)} / ${maxPts}</div>
+        </div>
+      `;
     }).join('');
 
     return `
-    <div class="card" style="padding:10px;">
-      <strong>Revisión — ${escapeHtml(att.student_nombre || '')}</strong>
-      <div class="muted">Estado actual: ${escapeHtml(att.status)}</div>
+      <div class="card card-tight">
+        <strong>Revisión — ${escapeHtml(att.student_nombre || '')}</strong>
+        <div class="muted">Estado actual: ${escapeHtml(att.status)}</div>
 
-      ${blocks}
+        ${blocks}
 
-      <form data-kind="shortGradeForm" data-quiz="${quizId}" data-attempt="${attemptId}" style="margin-top:10px;">
-        <button class="btn" type="submit">Guardar calificación SHORT</button>
-        <span class="muted" data-kind="msgGrade" data-attempt="${attemptId}"></span>
-      </form>
-    </div>
-  `;
+        <form data-kind="shortGradeForm" data-quiz="${quizId}" data-attempt="${attemptId}" class="mt-10">
+          <button class="btn" type="submit">Guardar calificación SHORT</button>
+          <span class="muted" data-kind="msgGrade" data-attempt="${attemptId}"></span>
+        </form>
+      </div>
+    `;
   }
 
   function canShowResults(quiz) {
@@ -344,7 +433,6 @@ include __DIR__ . '/components/header.php';
     if (mode === 'AFTER_SUBMIT') return true;
     if (mode === 'NO') return false;
 
-    // AFTER_DUE
     if (!quiz?.due_at) return false;
     const due = new Date(String(quiz.due_at).replace(' ', 'T'));
     return Date.now() >= due.getTime();
@@ -361,6 +449,7 @@ include __DIR__ . '/components/header.php';
     const qs = qj.data || [];
 
     if (!data) {
+      clearQuizCountdown(sectionId);
       box.innerHTML = `<div class="muted">Aún no has iniciado intento.</div>`;
       return;
     }
@@ -371,45 +460,44 @@ include __DIR__ . '/components/header.php';
     for (const a of answers) amap[String(a.question_id)] = a;
 
     if (att.status !== 'IN_PROGRESS') {
+      clearQuizCountdown(sectionId);
       const allowed = canShowResults(quizCfg);
 
       const msgDue = (quizCfg?.show_results === 'AFTER_DUE' && quizCfg?.due_at)
         ? `<div class="muted">Resultados disponibles después de: ${escapeHtml(quizCfg.due_at)}</div>`
         : '';
 
-      box.innerHTML = `<div class="card" style="padding:10px;">
-    <strong>Intento enviado</strong>
-    <button class="btn" data-kind="studentReview" data-quiz="${quizId}">
-      Ver revisión
-    </button>
-    <div id="student_review_box" style="margin-top:10px;"></div>
-    <div class="muted">Estado: ${escapeHtml(att.status)}</div>
+      box.innerHTML = `<div class="card card-tight">
+        <strong>Intento enviado</strong>
+        <button class="btn" data-kind="studentReview" data-quiz="${quizId}">
+          Ver revisión
+        </button>
+        <div id="student_review_box" class="mt-10"></div>
+        <div class="muted">Estado: ${escapeHtml(att.status)}</div>
 
-    ${allowed ? `
-      <div class="muted">Nota: ${att.score}</div>
-      <div class="muted">Puntos: ${att.raw_points}/${att.max_points}</div>
-    ` : `
-      <div class="muted">Los resultados no están disponibles según la configuración del quiz.</div>
-      ${msgDue}
-    `}
+        ${allowed ? `
+          <div class="muted">Nota: ${att.score}</div>
+          <div class="muted">Puntos: ${att.raw_points}/${att.max_points}</div>
+        ` : `
+          <div class="muted">Los resultados no están disponibles según la configuración del quiz.</div>
+          ${msgDue}
+        `}
 
-    <div class="muted">Si hay respuesta corta, el docente debe calificar.</div>
-  </div>`;
+        <div class="muted">Si hay respuesta corta, el docente debe calificar.</div>
+      </div>`;
       return;
     }
 
     const pager = getPager(sectionId);
 
-    // Inicializa draft con respuestas ya guardadas (solo la primera vez)
+    // Inicializa draft con respuestas ya guardadas (solo la primera vez por intento visible)
     if (!pager.__initDraftDone) {
       for (const q of qs) {
         const a = amap[String(q.id)] || {};
         if (q.type === 'SHORT') {
           pager.draft[String(q.id)] = { answer_text: String(a.answer_text || '') };
-        } else {
-          if (a.selected_option_id) {
-            pager.draft[String(q.id)] = { selected_option_id: Number(a.selected_option_id) };
-          }
+        } else if (a.selected_option_id) {
+          pager.draft[String(q.id)] = { selected_option_id: Number(a.selected_option_id) };
         }
       }
       pager.__initDraftDone = true;
@@ -426,46 +514,50 @@ include __DIR__ . '/components/header.php';
       const formQs = pageQs.map(q => {
         const d = pager.draft[String(q.id)] || {};
         if (q.type === 'SHORT') {
-          return `<div class="card" style="margin-top:8px; padding:10px;">
-        <strong>${escapeHtml(q.question_text)}</strong>
-        <textarea name="short_${q.id}" rows="2" style="margin-top:6px;">${escapeHtml(d.answer_text || '')}</textarea>
-      </div>`;
+          return `<div class="card card-tight mt-8">
+            <strong>${escapeHtml(q.question_text)}</strong>
+            <textarea name="short_${q.id}" rows="2" class="mt-6">${escapeHtml(d.answer_text || '')}</textarea>
+          </div>`;
         }
 
         const opts = (q.options || []).map(o => {
           const checked = String(d.selected_option_id || '') === String(o.id) ? 'checked' : '';
           return `<label style="display:block; margin-top:4px;">
-        <input type="radio" name="opt_${q.id}" value="${o.id}" ${checked} />
-        ${escapeHtml(o.option_text)}
-      </label>`;
+            <input type="radio" name="opt_${q.id}" value="${o.id}" ${checked} />
+            ${escapeHtml(o.option_text)}
+          </label>`;
         }).join('');
 
-        return `<div class="card" style="margin-top:8px; padding:10px;">
-      <strong>${escapeHtml(q.question_text)}</strong>
-      <div style="margin-top:6px;">${opts || '<span class="muted">Sin opciones.</span>'}</div>
-    </div>`;
+        return `<div class="card card-tight mt-8">
+          <strong>${escapeHtml(q.question_text)}</strong>
+          <div class="mt-6">${opts || '<span class="muted">Sin opciones.</span>'}</div>
+        </div>`;
       }).join('');
 
       box.innerHTML = `
-    <div class="card" style="padding:10px; margin-bottom:10px;">
-      <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
-        <div><strong>Página ${pager.page} de ${totalPages}</strong> <span class="muted">(${total} preguntas)</span></div>
-        <div style="display:flex; gap:8px;">
-          <button class="btn" type="button" data-kind="pagePrev" data-section="${sectionId}">Anterior</button>
-          <button class="btn" type="button" data-kind="pageNext" data-section="${sectionId}">Siguiente</button>
+        <div class="card" style="padding:10px; margin-bottom:10px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
+            <div>
+              <strong>Página ${pager.page} de ${totalPages}</strong>
+              <span class="muted">(${total} preguntas)</span>
+            </div>
+            <div class="muted" data-kind="attemptCountdown" data-section="${sectionId}"></div>
+            <div class="row gap-8">
+              <button class="btn" type="button" data-kind="pagePrev" data-section="${sectionId}">Anterior</button>
+              <button class="btn" type="button" data-kind="pageNext" data-section="${sectionId}">Siguiente</button>
+            </div>
+          </div>
         </div>
-      </div>
-    </div>
 
-    <form data-kind="attemptSubmit" data-section="${sectionId}" data-quiz="${quizId}">
-      ${formQs}
+        <form data-kind="attemptSubmit" data-section="${sectionId}" data-quiz="${quizId}">
+          ${formQs}
 
-      <div style="display:flex; gap:10px; align-items:center; margin-top:10px;">
-        <button class="btn" type="submit">Enviar</button>
-        <span class="muted" data-kind="msgSubmitAttempt" data-section="${sectionId}"></span>
-      </div>
-    </form>
-  `;
+          <div style="display:flex; gap:10px; align-items:center; margin-top:10px;">
+            <button class="btn" type="submit">Enviar</button>
+            <span class="muted" data-kind="msgSubmitAttempt" data-section="${sectionId}"></span>
+          </div>
+        </form>
+      `;
 
       const btnPrev = box.querySelector(`[data-kind="pagePrev"][data-section="${sectionId}"]`);
       const btnNext = box.querySelector(`[data-kind="pageNext"][data-section="${sectionId}"]`);
@@ -474,36 +566,32 @@ include __DIR__ . '/components/header.php';
     }
 
     renderPage();
+    startQuizCountdown(sectionId, quizCfg, att);
 
-    box.addEventListener('input', (ev) => {
-      const t = ev.target;
-      if (!t) return;
+    // Evitar duplicar listeners si la función se llama muchas veces
+    if (!box.__pagerListenersBound) {
+      box.addEventListener('input', (ev) => {
+        const t = ev.target;
+        if (!t) return;
 
-      if (t.name && t.name.startsWith('short_')) {
-        const qid = t.name.replace('short_', '');
-        pager.draft[qid] = { ...(pager.draft[qid] || {}), answer_text: String(t.value || '') };
-      }
-    }, { passive: true });
+        if (t.name && t.name.startsWith('short_')) {
+          const qid = t.name.replace('short_', '');
+          pager.draft[qid] = { ...(pager.draft[qid] || {}), answer_text: String(t.value || '') };
+        }
+      }, { passive: true });
 
-    box.addEventListener('change', (ev) => {
-      const t = ev.target;
-      if (!t) return;
+      box.addEventListener('change', (ev) => {
+        const t = ev.target;
+        if (!t) return;
 
-      if (t.type === 'radio' && t.name && t.name.startsWith('opt_')) {
-        const qid = t.name.replace('opt_', '');
-        pager.draft[qid] = { ...(pager.draft[qid] || {}), selected_option_id: Number(t.value) };
-      }
-    }, { passive: true });
+        if (t.type === 'radio' && t.name && t.name.startsWith('opt_')) {
+          const qid = t.name.replace('opt_', '');
+          pager.draft[qid] = { ...(pager.draft[qid] || {}), selected_option_id: Number(t.value) };
+        }
+      }, { passive: true });
 
-    box.innerHTML = `
-      <form data-kind="attemptSubmit" data-section="${sectionId}" data-quiz="${quizId}">
-        ${formQs}
-        <div style="display:flex; gap:10px; align-items:center; margin-top:10px;">
-          <button class="btn" type="submit">Enviar</button>
-          <span class="muted" data-kind="msgSubmitAttempt" data-section="${sectionId}"></span>
-        </div>
-      </form>
-    `;
+      box.__pagerListenersBound = true;
+    }
   }
 
   async function renderQuiz() {
@@ -512,6 +600,7 @@ include __DIR__ . '/components/header.php';
 
     const qj = await api('quizzes_getBySection', { method: 'GET', params: { section_id: SECTION_ID } });
     const quiz = qj.data || null;
+
     if (IS_ADMIN || IS_DOCENTE) {
       root.innerHTML = renderQuizAdminUI(SECTION_ID, quiz, TIPO);
 
@@ -531,11 +620,11 @@ include __DIR__ . '/components/header.php';
         if (locked) {
           if (lockBox) {
             lockBox.innerHTML = `
-            <div class="card" style="padding:10px; margin-top:10px;">
-              <strong>Edición bloqueada</strong>
-              <div class="muted">Ya existen entregas de estudiantes. No se pueden modificar preguntas u opciones.</div>
-            </div>
-          `;
+              <div class="card" style="padding:10px; margin-top:10px;">
+                <strong>Edición bloqueada</strong>
+                <div class="muted">Ya existen entregas de estudiantes. No se pueden modificar preguntas u opciones.</div>
+              </div>
+            `;
           }
           if (qForm) qForm.style.display = 'none';
           if (qCard) qCard.style.display = 'none';
@@ -550,7 +639,9 @@ include __DIR__ . '/components/header.php';
 
       return;
     }
+
     if (IS_STUDENT) {
+      clearQuizCountdown(SECTION_ID);
       root.innerHTML = renderQuizStudentUI(SECTION_ID, quiz);
       if (quiz?.id) await loadStudentAttemptInto(SECTION_ID, quiz.id, quiz);
       return;
@@ -564,9 +655,9 @@ include __DIR__ . '/components/header.php';
     const el = e.target.closest('[data-kind]');
     if (!el) return;
 
-    const kind = el.getAttribute('data-kind'); // ✅ SIEMPRE primero
+    const kind = el.getAttribute('data-kind');
 
-    // ✅ Paginación
+    // Paginación estudiante
     if (kind === 'pagePrev' || kind === 'pageNext') {
       const sectionId = el.getAttribute('data-section');
 
@@ -575,7 +666,6 @@ include __DIR__ . '/components/header.php';
       if (!quiz?.id) return;
 
       const pager = getPager(sectionId);
-
       const totalQs = (await api('quiz_questions_list', { method: 'GET', params: { quiz_id: quiz.id } })).data?.length || 0;
       const totalPages = Math.max(1, Math.ceil(totalQs / PAGE_SIZE));
 
@@ -585,7 +675,7 @@ include __DIR__ . '/components/header.php';
       return;
     }
 
-    // ✅ Iniciar intento
+    // Iniciar intento
     if (kind === 'attemptStart') {
       const sectionId = el.getAttribute('data-section');
       const quizId = el.getAttribute('data-quiz');
@@ -596,6 +686,13 @@ include __DIR__ . '/components/header.php';
         await api('quiz_attempt_start', { data: { quiz_id: quizId } });
         if (msg) msg.textContent = 'Intento iniciado.';
 
+        // reiniciar estado de paginación/draft para nuevo intento/reinicio
+        if (__pagerState[sectionId]) {
+          __pagerState[sectionId].page = 1;
+          __pagerState[sectionId].draft = {};
+          __pagerState[sectionId].__initDraftDone = false;
+        }
+
         const qj = await api('quizzes_getBySection', { method: 'GET', params: { section_id: sectionId } });
         await loadStudentAttemptInto(sectionId, Number(quizId), qj.data || null);
       } catch (err) {
@@ -604,13 +701,13 @@ include __DIR__ . '/components/header.php';
       return;
     }
 
-    // ✅ Bloqueo para docente (el estudiante no entra aquí)
+    // Bloqueo para docente
     if ((kind === 'qDel' || kind === 'optDel') && window.__QUIZ_LOCKED__) {
       alert('No se pueden modificar preguntas/opciones: ya existen entregas.');
       return;
     }
 
-    // ✅ Eliminar pregunta
+    // Eliminar pregunta
     if (kind === 'qDel') {
       const id = el.getAttribute('data-id');
       const sectionId = el.getAttribute('data-section');
@@ -621,7 +718,7 @@ include __DIR__ . '/components/header.php';
       return;
     }
 
-    // ✅ Eliminar opción
+    // Eliminar opción
     if (kind === 'optDel') {
       const id = el.getAttribute('data-id');
       const sectionId = el.getAttribute('data-section');
@@ -632,7 +729,7 @@ include __DIR__ . '/components/header.php';
       return;
     }
 
-    // ✅ Revisar intento (docente)
+    // Revisar intento (docente)
     if (kind === 'attemptReview') {
       const attemptId = el.getAttribute('data-attempt');
       const quizId = el.getAttribute('data-quiz');
@@ -652,7 +749,7 @@ include __DIR__ . '/components/header.php';
       return;
     }
 
-    // ✅ Ver revisión (estudiante)
+    // Ver revisión (estudiante)
     if (kind === 'studentReview') {
       const quizId = el.getAttribute('data-quiz');
       const box = document.getElementById('student_review_box');
@@ -682,21 +779,19 @@ include __DIR__ . '/components/header.php';
       const maxPts = Number(q.points || 0);
       const gotPts = Number(a.points_awarded || 0);
 
-      // SHORT
       if (q.type === 'SHORT') {
         const pending = (att.status !== 'GRADED');
         return `
-        <div class="card" style="padding:10px; margin-top:8px;">
-          <div><strong>[SHORT]</strong> <span class="muted">(${gotPts}/${maxPts} pts)</span></div>
-          <div style="margin-top:6px;">${escapeHtml(q.question_text)}</div>
-          <div class="muted" style="margin-top:6px;">Tu respuesta:</div>
-          <div style="margin-top:4px;">${escapeHtml(a.answer_text || '(sin respuesta)')}</div>
-          ${pending ? `<div class="muted" style="margin-top:6px;">Pendiente de revisión del docente</div>` : ``}
-        </div>
-      `;
+          <div class="card" style="padding:10px; margin-top:8px;">
+            <div><strong>[SHORT]</strong> <span class="muted">(${gotPts}/${maxPts} pts)</span></div>
+            <div class="mt-6">${escapeHtml(q.question_text)}</div>
+            <div class="muted mt-6">Tu respuesta:</div>
+            <div style="margin-top:4px;">${escapeHtml(a.answer_text || '(sin respuesta)')}</div>
+            ${pending ? `<div class="muted mt-6">Pendiente de revisión del docente</div>` : ``}
+          </div>
+        `;
       }
 
-      // MCQ/TF
       const selId = a.selected_option_id ? String(a.selected_option_id) : '';
       const chosen = (q.options || []).find(o => String(o.id) === selId);
       const correct = (q.options || []).find(o => String(o.id) === String(q.correct_option_id || ''));
@@ -707,39 +802,38 @@ include __DIR__ . '/components/header.php';
         : `<span class="badge">Sin responder</span>`;
 
       return `
-      <div class="card" style="padding:10px; margin-top:8px;">
-        <div style="display:flex; justify-content:space-between; gap:10px;">
-          <div><strong>[${escapeHtml(q.type)}]</strong> <span class="muted">(${gotPts}/${maxPts} pts)</span></div>
-          <div>${badge}</div>
+        <div class="card" style="padding:10px; margin-top:8px;">
+          <div style="display:flex; justify-content:space-between; gap:10px;">
+            <div><strong>[${escapeHtml(q.type)}]</strong> <span class="muted">(${gotPts}/${maxPts} pts)</span></div>
+            <div>${badge}</div>
+          </div>
+          <div class="mt-6">${escapeHtml(q.question_text)}</div>
+
+          <div class="muted mt-6">Tu elección:</div>
+          <div>${escapeHtml(chosen?.option_text || '(sin respuesta)')}</div>
+
+          <div class="muted mt-6">Respuesta correcta:</div>
+          <div>${escapeHtml(correct?.option_text || '(no definida)')}</div>
         </div>
-        <div style="margin-top:6px;">${escapeHtml(q.question_text)}</div>
-
-        <div class="muted" style="margin-top:6px;">Tu elección:</div>
-        <div>${escapeHtml(chosen?.option_text || '(sin respuesta)')}</div>
-
-        <div class="muted" style="margin-top:6px;">Respuesta correcta:</div>
-        <div>${escapeHtml(correct?.option_text || '(no definida)')}</div>
-      </div>
-    `;
+      `;
     }).join('');
 
     return `
-    <div class="card" style="padding:10px;">
-      <strong>Revisión del intento</strong>
-      <div class="muted">Estado: ${escapeHtml(att.status)} — Nota: ${att.score} — Puntos: ${att.raw_points}/${att.max_points}</div>
-      ${items}
-    </div>
-  `;
+      <div class="card card-tight">
+        <strong>Revisión del intento</strong>
+        <div class="muted">Estado: ${escapeHtml(att.status)} — Nota: ${att.score} — Puntos: ${att.raw_points}/${att.max_points}</div>
+        ${items}
+      </div>
+    `;
   }
 
   async function isQuizLocked(quizId) {
     try {
       const j = await api('quiz_attempts_list', { method: 'GET', params: { quiz_id: quizId } });
       const rows = j.data || [];
-      // si existe al menos 1 intento, ya no se debe permitir modificar preguntas/opciones // filtra por status != IN_PROGRESS:
       return rows.some(r => String(r.status) !== 'IN_PROGRESS');
     } catch (e) {
-      return false; // si falla, no bloqueamos visualmente, pero backend lo impedirá
+      return false;
     }
   }
 
@@ -752,8 +846,11 @@ include __DIR__ . '/components/header.php';
       const sectionId = form.getAttribute('data-section');
       const fd = new FormData(form);
 
-      const af = fd.get('available_from'); fd.set('available_from', af ? String(af).replace('T', ' ') + ':00' : '');
-      const du = fd.get('due_at'); fd.set('due_at', du ? String(du).replace('T', ' ') + ':00' : '');
+      const af = fd.get('available_from');
+      fd.set('available_from', af ? String(af).replace('T', ' ') + ':00' : '');
+
+      const du = fd.get('due_at');
+      fd.set('due_at', du ? String(du).replace('T', ' ') + ':00' : '');
 
       const msg = document.querySelector(`[data-kind="msgQuiz"][data-section="${sectionId}"]`);
       if (msg) msg.textContent = '';
@@ -770,7 +867,7 @@ include __DIR__ . '/components/header.php';
 
     if (form.matches('form[data-kind="questionUpsert"]')) {
       if (window.__QUIZ_LOCKED__) {
-        e.preventDefault(); // ✅ evita redirect
+        e.preventDefault();
         alert('No se pueden modificar preguntas/opciones: ya existen entregas.');
         return;
       }
@@ -792,7 +889,7 @@ include __DIR__ . '/components/header.php';
 
     if (form.matches('form[data-kind="optAdd"]')) {
       if (window.__QUIZ_LOCKED__) {
-        e.preventDefault(); // ✅ evita redirect (este era el bug)
+        e.preventDefault();
         alert('No se pueden modificar preguntas/opciones: ya existen entregas.');
         return;
       }
@@ -820,28 +917,22 @@ include __DIR__ . '/components/header.php';
       const msg = document.querySelector(`[data-kind="msgSubmitAttempt"][data-section="${sectionId}"]`);
       if (msg) msg.textContent = '';
 
-      // ✅ NUEVO: enviar TODAS las respuestas usando draft del paginador
       const pager = getPager(sectionId);
 
-      // Cargar todas las preguntas
       const qjAll = await api('quiz_questions_list', { method: 'GET', params: { quiz_id: quizId } });
       const qsAll = qjAll.data || [];
 
-      // Sync de lo que está visible (la página actual) antes de enviar
       const startIdx = (pager.page - 1) * PAGE_SIZE;
       const pageQs = qsAll.slice(startIdx, startIdx + PAGE_SIZE);
       syncDraftFromDOM(sectionId, pageQs);
 
-      // Construir answers desde draft (todas las preguntas)
       const answers = [];
       for (const q of qsAll) {
         const d = pager.draft[String(q.id)] || {};
         if (q.type === 'SHORT') {
           answers.push({ question_id: q.id, answer_text: String(d.answer_text || '') });
-        } else {
-          if (d.selected_option_id) {
-            answers.push({ question_id: q.id, selected_option_id: Number(d.selected_option_id) });
-          }
+        } else if (d.selected_option_id) {
+          answers.push({ question_id: q.id, selected_option_id: Number(d.selected_option_id) });
         }
       }
 
@@ -853,7 +944,8 @@ include __DIR__ . '/components/header.php';
         await api('quiz_attempt_submit', { data: sendFd, isForm: true });
         if (msg) msg.textContent = 'Enviado.';
 
-        // opcional: limpiar draft después de enviar
+        clearQuizCountdown(sectionId);
+
         if (__pagerState[sectionId]) {
           __pagerState[sectionId].__initDraftDone = false;
           __pagerState[sectionId].draft = {};

@@ -19,7 +19,7 @@ $rol = $u['rol'] ?? '';
   <section class="card">
     <h3>Crear curso</h3>
 
-    <form id="formCourse" class="grid2" style="max-width:900px; margin:0 auto;">
+    <form id="formCourse" class="grid2 form-shell">
       <label>Nombre<input name="nombre" required /></label>
       <label>Grado (7-11)<input name="grado" type="number" min="7" max="11" value="7" /></label>
 
@@ -31,11 +31,11 @@ $rol = $u['rol'] ?? '';
         </select>
       </label>
 
-      <label style="grid-column:1/-1">Descripción
+      <label class="span-all">Descripción
         <textarea name="descripcion" rows="3"></textarea>
       </label>
 
-      <div style="grid-column:1/-1; display:flex; gap:12px; align-items:center;">
+      <div class="span-all row gap-12 align-center">
         <button class="btn" type="submit">Crear</button>
         <div id="msgCourse" class="muted"></div>
       </div>
@@ -59,6 +59,7 @@ $rol = $u['rol'] ?? '';
 
 <script>
   const IS_ADMIN = <?php echo json_encode($rol === 'ADMIN'); ?>;
+  const ROLE = <?php echo json_encode($rol); ?>; // ✅ agregado para detectar estudiante
 
   function escapeHtml(v) {
     return String(v ?? '')
@@ -74,16 +75,21 @@ $rol = $u['rol'] ?? '';
       ? `<button class="btn" data-kind="deleteCourse" data-id="${c.id}">Eliminar</button>`
       : '';
 
-    return `<div class="card" style="text-align:left; width:100%; margin:8px 0;">
-      <div style="display:flex; justify-content:space-between; gap:8px; align-items:flex-start;">
+    return `<div class="card card-row">
+      <div class="row-between-start gap-8">
         <div style="flex:1;">
           <div><strong>${escapeHtml(c.nombre)}</strong></div>
           <div class="muted">Grado: ${escapeHtml(c.grado)} — Docente: ${escapeHtml(c.docente_nombre || '')}</div>
+
+          ${(ROLE === 'ESTUDIANTE' && c.nota_actual != null)
+            ? `<div class="muted">Nota actual: ${escapeHtml(c.nota_actual)} / 100</div>`
+            : ''}
+
           <div class="muted">${escapeHtml(c.descripcion || '')}</div>
           <div class="muted">${escapeHtml(c.seccion || '')}</div>
         </div>
 
-        <div style="display:flex; gap:8px;">
+        <div class="row gap-8">
           <button class="btn" data-kind="open" data-id="${c.id}">Abrir</button>
           ${delBtn}
         </div>

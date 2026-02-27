@@ -34,7 +34,7 @@ class VirtualCampusController
         }
 
         if ($rol === 'DOCENTE') {
-            if ((int)($c['docente_user_id'] ?? 0) !== (int)($u['id'] ?? 0)) {
+            if ((int) ($c['docente_user_id'] ?? 0) !== (int) ($u['id'] ?? 0)) {
                 http_response_code(403);
                 echo json_encode(['status' => 'error', 'message' => 'No autorizado']);
                 return;
@@ -52,6 +52,11 @@ class VirtualCampusController
                 echo json_encode(['status' => 'error', 'message' => 'No autorizado']);
                 return;
             }
+            $c['nota_actual'] = 0.0;
+            if (!empty($s['id'])) {
+                $c['nota_actual'] = (new Course())->getStudentCurrentGrade((int) $c['id'], (int) $s['id']);
+            }
+
             echo json_encode(['status' => 'success', 'data' => $c]);
             return;
         }
@@ -91,7 +96,8 @@ class VirtualCampusController
 
         $sec = new CourseSection();
         $id = $sec->create($course_id, $titulo, $descripcion, $semana, $orden, $tipo);
-        if ($id) echo json_encode(['status' => 'success', 'id' => $id]);
+        if ($id)
+            echo json_encode(['status' => 'success', 'id' => $id]);
         else {
             http_response_code(500);
             echo json_encode(['status' => 'error', 'message' => 'No se pudo crear la sección']);
@@ -136,8 +142,8 @@ class VirtualCampusController
 
         // Validar dueño si DOCENTE
         if (($u['rol'] ?? '') === 'DOCENTE') {
-            $c = (new Course())->get((int)$sec['course_id']);
-            if (!$c || (int)$c['docente_user_id'] !== (int)$u['id']) {
+            $c = (new Course())->get((int) $sec['course_id']);
+            if (!$c || (int) $c['docente_user_id'] !== (int) $u['id']) {
                 http_response_code(403);
                 echo json_encode(['status' => 'error', 'message' => 'No puedes eliminar secciones de otro docente']);
                 return;
@@ -172,8 +178,8 @@ class VirtualCampusController
 
         // Validar dueño si DOCENTE
         if (($u['rol'] ?? '') === 'DOCENTE') {
-            $c = (new Course())->get((int)$sec['course_id']);
-            if (!$c || (int)$c['docente_user_id'] !== (int)$u['id']) {
+            $c = (new Course())->get((int) $sec['course_id']);
+            if (!$c || (int) $c['docente_user_id'] !== (int) $u['id']) {
                 http_response_code(403);
                 echo json_encode(['status' => 'error', 'message' => 'No puedes modificar secciones de otro docente']);
                 return;

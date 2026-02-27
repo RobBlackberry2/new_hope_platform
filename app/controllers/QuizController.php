@@ -74,6 +74,14 @@ class QuizController
 
         $available_from = ($p['available_from'] ?? '') ?: null;
         $due_at = ($p['due_at'] ?? '') ?: null;
+        $weight_percent_raw = $p['weight_percent'] ?? '';
+        $weight_percent = ($weight_percent_raw === '' ? null : (int) $weight_percent_raw);
+
+        if ($weight_percent !== null && ($weight_percent < 0 || $weight_percent > 100)) {
+            http_response_code(400);
+            echo json_encode(['status' => 'error', 'message' => 'El peso (%) debe estar entre 0 y 100']);
+            return;
+        }
         $passing_score = (int) ($p['passing_score'] ?? 70);
         $show_results = $p['show_results'] ?? 'AFTER_SUBMIT';
         $is_exam = 0;
@@ -96,7 +104,27 @@ class QuizController
             return;
         }
 
-        $this->assertDocenteOwnsCourse((int) $sec['course_id']);
+        $course_id = (int) $sec['course_id'];
+        $this->assertDocenteOwnsCourse($course_id);
+
+        if ($weight_percent !== null) {
+            $quizModel = new Quiz();
+            $existingQuiz = $quizModel->getBySection($section_id);
+            $excludeQuizId = $existingQuiz ? (int) $existingQuiz['id'] : null;
+
+            $courseModel = new Course();
+            $used = $courseModel->sumConfiguredWeights($course_id, null, $excludeQuizId);
+            $newTotal = $used + (int) $weight_percent;
+
+            if ($newTotal > 100) {
+                http_response_code(400);
+                echo json_encode([
+                    'status' => 'error',
+                    'message' => "El porcentaje total del curso excede 100%. Ya hay {$used}% configurado en otras evaluaciones. Disponible: " . max(0, 100 - $used) . "%"
+                ]);
+                return;
+            }
+        }
 
         $id = (new Quiz())->upsertBySection(
             $section_id,
@@ -105,6 +133,7 @@ class QuizController
             $time_limit_minutes,
             $available_from,
             $due_at,
+            $weight_percent,
             $passing_score,
             $show_results,
             $is_exam
