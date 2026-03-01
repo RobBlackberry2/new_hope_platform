@@ -3,43 +3,55 @@ require_once __DIR__ . '/app/helpers/auth.php';
 $config   = require __DIR__ . '/app/config/config.php';
 $base_url = $config['base_url'] ?? '';
 
+// Si no hay sesión, redirigir al login
+if (!current_user()) {
+    header('Location: ' . $base_url . '/login.php');
+    exit;
+}
+
 include __DIR__ . '/components/header.php';
 ?>
 
-<section class="card" style="max-width:500px;margin:20px auto;">
-  <h2 style="text-align:center;margin-bottom:16px;">Cambiar contraseña</h2>
+<section class="card">
+  <h2>Cambiar contraseña</h2>
 
-  <form id="formChangePassword">
-    <div class="field">
-      <label for="username">Usuario</label>
-      <input type="text" id="username" name="username" required />
-    </div>
-
+  <form id="formChangePassword" style="max-width:400px;margin:0 auto;">
     <div class="field">
       <label for="current_password">Contraseña actual</label>
-      <input type="password" id="current_password" name="current_password" required />
+      <input
+        type="password"
+        id="current_password"
+        name="current_password"
+        required
+      />
     </div>
 
     <div class="field">
       <label for="password">Nueva contraseña</label>
-      <input type="password" id="password" name="password" required />
+      <input
+        type="password"
+        id="password"
+        name="password"
+        required
+      />
     </div>
 
     <div class="field">
       <label for="password_confirm">Confirmar nueva contraseña</label>
-      <input type="password" id="password_confirm" name="password_confirm" required />
+      <input
+        type="password"
+        id="password_confirm"
+        name="password_confirm"
+        required
+      />
     </div>
 
     <div style="text-align:center;margin-top:12px;">
-      <button type="submit" class="btn">Guardar nueva contraseña</button>
+      <button type="submit" class="btn">Guardar cambios</button>
     </div>
 
     <div id="msg" style="margin-top:10px;text-align:center;"></div>
   </form>
-
-  <div style="text-align:center;margin-top:10px;">
-    <a href="login.php">Volver al inicio de sesión</a>
-  </div>
 </section>
 
 <script>
@@ -51,10 +63,9 @@ document.getElementById('formChangePassword').addEventListener('submit', async (
   const msgElem = document.getElementById('msg');
 
   msgElem.textContent = '';
-  msgElem.style.color = '';
 
-  const newPass     = String(fd.get('password') || '');
-  const newPassConf = String(fd.get('password_confirm') || '');
+  const newPass     = fd.get('password');
+  const newPassConf = fd.get('password_confirm');
 
   if (newPass !== newPassConf) {
     msgElem.style.color = 'red';
@@ -62,7 +73,7 @@ document.getElementById('formChangePassword').addEventListener('submit', async (
     return;
   }
 
-  if (newPass.length < 6) {
+  if (String(newPass).length < 6) {
     msgElem.style.color = 'red';
     msgElem.textContent = 'La nueva contraseña debe tener al menos 6 caracteres';
     return;
