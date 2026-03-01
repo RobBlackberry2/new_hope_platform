@@ -1,4 +1,4 @@
-<?php
+    <?php
 date_default_timezone_set('America/Costa_Rica');
 $action = $_GET['action'] ?? '';
 $downloadActions = ['resources_download','submission_files_download'];
@@ -35,6 +35,9 @@ try {
         case 'register': $auth->register(); break;
         case 'me': $auth->me(); break;
         case 'logout': $auth->logout(); break;
+        case 'forgot_password': $auth->forgotPassword(); break;
+case 'reset_password': $auth->resetPassword(); break;
+case 'change_password': $auth->changePassword(); break;
 
         // Gestión de usuarios (ADMIN)
         case 'users_list': $users->list(); break;
@@ -46,6 +49,7 @@ try {
         case 'users_setRole': $users->setRole(); break;
         case 'users_setEstado': $users->setEstado(); break;
         case 'users_delete': $users->delete(); break;
+
 
         // Administrativo - Matriculas (ADMIN)
         case 'students_create': $mat->createStudent(); break;
@@ -130,5 +134,10 @@ try {
     }
 } catch (Throwable $ex) {
     http_response_code(500);
-    echo json_encode(['status' => 'error', 'message' => 'Error interno', 'detail' => $ex->getMessage()]);
+    echo json_encode([
+        'status' => 'error',
+        'message' => $ex->getMessage(),
+        'file' => $ex->getFile(),
+        'line' => $ex->getLine()
+    ]);
 }
