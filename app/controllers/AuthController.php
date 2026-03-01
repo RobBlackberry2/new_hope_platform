@@ -4,9 +4,7 @@ require_once __DIR__ . '/../helpers/auth.php';
 
 class AuthController
 {
-    /* =========================
-       LOGIN
-       ========================= */
+   
     public function login(): void
     {
         $username = trim((string) ($_POST['username'] ?? ''));
@@ -42,9 +40,7 @@ class AuthController
         echo json_encode(['status' => 'error', 'message' => 'Usuario o contraseña inválidos']);
     }
 
-    /* =========================
-       USUARIO ACTUAL
-       ========================= */
+ 
     public function me(): void
     {
         $u = current_user();
@@ -56,9 +52,6 @@ class AuthController
         echo json_encode(['status' => 'success', 'user' => $u]);
     }
 
-    /* =========================
-       LOGOUT
-       ========================= */
     public function logout(): void
     {
         ensure_session_started();
@@ -67,9 +60,7 @@ class AuthController
         echo json_encode(['status' => 'success']);
     }
 
-    /* =========================
-       REGISTRO
-       ========================= */
+ 
     public function register(): void
     {
         $username = $_POST['username'] ?? '';
@@ -101,9 +92,7 @@ class AuthController
         echo json_encode(['status' => 'success']);
     }
 
-    /* =========================
-       🔐 RECUPERAR CONTRASEÑA
-       ========================= */
+   
     public function forgotPassword(): void
     {
         $correo = trim((string) ($_POST['correo'] ?? ''));
@@ -126,7 +115,6 @@ class AuthController
             return;
         }
 
-        // Token + expiración
         $token = bin2hex(random_bytes(32));
         $expires = (new DateTime('+1 hour'))->format('Y-m-d H:i:s');
 
@@ -136,7 +124,6 @@ class AuthController
             return;
         }
 
-        // Construir link
         $config = require __DIR__ . '/../config/config.php';
         $baseUrl = $config['base_url'] ?? '';
         $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
@@ -167,10 +154,10 @@ class AuthController
 
             $mail->isHTML(true);
 
-            // 🔵 Incrustar logo
-            $logoPath = __DIR__ . '/../../img/logo_nh.png'; // AJUSTAR SI ES OTRA RUTA
+            //logo
+            $logoPath = __DIR__ . '/../../img/NewHopeLogo.png'; 
             if (file_exists($logoPath)) {
-                $mail->addEmbeddedImage($logoPath, 'nhlogo', 'logo_nh.png');
+                $mail->addEmbeddedImage($logoPath, 'nhlogo', 'NewHopeLogo.png');
             }
 
             $nombre = $user['nombre'] ?? $user['username'];
@@ -235,9 +222,7 @@ class AuthController
         }
     }
 
-    /* =========================
-       🔐 RESTABLECER CONTRASEÑA
-       ========================= */
+ 
     public function resetPassword(): void
     {
         $token = trim((string) ($_POST['token'] ?? ''));
@@ -258,7 +243,6 @@ class AuthController
             return;
         }
 
-        // Expiró
         if (new DateTime() > new DateTime($user['reset_expires_at'])) {
             http_response_code(400);
             echo json_encode(['status'=>'error','message'=>'El enlace ha expirado']);
@@ -278,9 +262,7 @@ class AuthController
         echo json_encode(['status'=>'success','message'=>'Contraseña restablecida correctamente']);
     }
 
-    /* =========================
-       🔐 CAMBIAR CONTRASEÑA (Manual)
-       ========================= */
+    
     public function changePassword(): void
     {
         $username = trim((string) ($_POST['username'] ?? ''));
