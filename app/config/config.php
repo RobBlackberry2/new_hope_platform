@@ -13,18 +13,16 @@ return [
     // El proyecto DEBE vivir en htdocs/new_hope_platform para acceder como http://localhost/new_hope_platform
     'base_url' => '/new_hope_platform',
 
-    // Para desarrollo: activa/desactiva errores
     'debug' => true,
 
-    // ⚠️ CONFIGURACIÓN DE CORREO (AJUSTA ESTOS DATOS A TU GMAIL / SMTP)
     'mail' => [
         'host'       => 'smtp.gmail.com',
         'port'       => 587,
-        'username'   => 'tanyr09@gmail.com',      // <-- cambia esto
-        'password'   => 'uzxxejifiwpknegm',         // <-- usa contraseña de aplicación de Gmail
-        'from_email' => 'tanyr09@gmail.com',     // <-- mismo correo remitente
+        'username'   => 'tanyr09@gmail.com',     
+        'password'   => 'uzxxejifiwpknegm',        
+        'from_email' => 'tanyr09@gmail.com',    
         'from_name'  => 'New Hope School',         // nombre que aparecerá en el correo
-        'secure'     => 'tls',                     // tls o ssl según tu proveedor
+        'secure'     => 'tls',                    
     ],
 
     'microsoft' => [

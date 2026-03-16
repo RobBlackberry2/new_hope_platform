@@ -4,7 +4,6 @@ require_once __DIR__ . '/../helpers/auth.php';
 
 class AuthController
 {
-   
     public function login(): void
     {
         $username = trim((string) ($_POST['username'] ?? ''));
@@ -40,7 +39,6 @@ class AuthController
         echo json_encode(['status' => 'error', 'message' => 'Usuario o contraseña inválidos']);
     }
 
- 
     public function me(): void
     {
         $u = current_user();
@@ -60,7 +58,6 @@ class AuthController
         echo json_encode(['status' => 'success']);
     }
 
- 
     public function register(): void
     {
         $username = $_POST['username'] ?? '';
@@ -92,7 +89,6 @@ class AuthController
         echo json_encode(['status' => 'success']);
     }
 
-   
     public function forgotPassword(): void
     {
         $correo = trim((string) ($_POST['correo'] ?? ''));
@@ -106,11 +102,12 @@ class AuthController
         $userModel = new User();
         $user = $userModel->getByCorreo($correo);
 
+        // Si el usuario NO existe
         if (!$user) {
+            http_response_code(404);
             echo json_encode([
-                'status' => 'success',
-                'message' => 'Si el correo existe en el sistema, se ha enviado un enlace de recuperación',
-                'reset_link' => null
+                'status' => 'error',
+                'message' => 'Usuario no encontrado'
             ]);
             return;
         }
@@ -128,9 +125,9 @@ class AuthController
         $baseUrl = $config['base_url'] ?? '';
         $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
         $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+
         $resetLink = $scheme . "://$host$baseUrl/restablecer.php?token=" . urlencode($token);
 
-        // PHPMailer conf
         $mailConfig = $config['mail'];
 
         require_once __DIR__ . '/../../libs/PHPMailer/PHPMailer.php';
@@ -154,57 +151,62 @@ class AuthController
 
             $mail->isHTML(true);
 
-            //logo
-            $logoPath = __DIR__ . '/../../img/NewHopeLogo.png'; 
+            // Logo
+            $logoPath = __DIR__ . '/../../img/NewHopeLogo.png';
             if (file_exists($logoPath)) {
                 $mail->addEmbeddedImage($logoPath, 'nhlogo', 'NewHopeLogo.png');
             }
 
             $nombre = $user['nombre'] ?? $user['username'];
 
-            // HTML del correo
-            $mail->Subject = 'Restablecimiento de contraseña - New Hope School';
+            $mail->Subject = 'Restablecimiento de contrasena - New Hope School';
+
             $mail->Body = '
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f7;padding:24px 0;">
-  <tr>
-    <td align="center">
-      <table style="max-width:600px;background:white;border-radius:8px;padding:32px;font-family:system-ui;border:1px solid #e5e7eb;">
-        <tr>
-          <td style="text-align:center;padding-bottom:16px;border-bottom:1px solid #e5e7eb;">
-            <img src="cid:nhlogo" alt="Logo" style="height:60px;margin-bottom:12px;">
-            <div style="font-size:20px;font-weight:600;color:#1d4ed8;">New Hope School</div>
-            <div style="font-size:12px;color:#6b7280;">Plataforma Académica</div>
-          </td>
-        </tr>
+<tr>
+<td align="center">
+<table style="max-width:600px;background:white;border-radius:8px;padding:32px;font-family:system-ui;border:1px solid #e5e7eb;">
+<tr>
+<td style="text-align:center;padding-bottom:16px;border-bottom:1px solid #e5e7eb;">
+<img src="cid:nhlogo" alt="Logo" style="height:60px;margin-bottom:12px;">
+<div style="font-size:20px;font-weight:600;color:#1d4ed8;">New Hope School</div>
+<div style="font-size:12px;color:#6b7280;">Plataforma Académica</div>
+</td>
+</tr>
 
-        <tr>
-          <td style="font-size:14px;padding-top:24px;color:#111;">
-            <p>Estimado(a) <strong>' . htmlspecialchars($nombre) . '</strong>,</p>
-            <p>Hemos recibido una solicitud para restablecer la contraseña de su cuenta en la plataforma New Hope School.</p>
+<tr>
+<td style="font-size:14px;padding-top:24px;color:#111;">
+<p>Estimado(a) <strong>' . htmlspecialchars($nombre) . '</strong>,</p>
 
-            <p style="text-align:center;margin:20px 0;">
-              <a href="' . $resetLink . '" style="background:#2563eb;color:white;padding:12px 24px;border-radius:999px;text-decoration:none;font-weight:500;">
-                Restablecer contraseña
-              </a>
-            </p>
+<p>Hemos recibido una solicitud para restablecer la contraseña de su cuenta en la plataforma New Hope School.</p>
 
-            <p>Si el botón no funciona, copie el siguiente enlace:</p>
-            <p style="font-size:12px;color:#1d4ed8;word-break:break-all;">' . $resetLink . '</p>
+<p style="text-align:center;margin:20px 0;">
+<a href="' . $resetLink . '" style="background:#2563eb;color:white;padding:12px 24px;border-radius:999px;text-decoration:none;font-weight:500;">
+Restablecer contraseña
+</a>
+</p>
 
-            <p>Este enlace es válido por <strong>1 hora</strong>.</p>
+<p>Si el botón no funciona, copie el siguiente enlace:</p>
 
-            <p>Atentamente,<br><strong>Equipo Académico New Hope School</strong></p>
-          </td>
-        </tr>
+<p style="font-size:12px;color:#1d4ed8;word-break:break-all;">
+' . $resetLink . '
+</p>
 
-        <tr>
-          <td style="font-size:11px;color:#9ca3af;text-align:center;border-top:1px solid #e5e7eb;padding-top:20px;">
-            Este es un mensaje automático, por favor no responder.
-          </td>
-        </tr>
-      </table>
-    </td>
-  </tr>
+<p>Este enlace es válido por <strong>1 hora</strong>.</p>
+
+<p>Atentamente,<br><strong>Equipo Académico New Hope School</strong></p>
+</td>
+</tr>
+
+<tr>
+<td style="font-size:11px;color:#9ca3af;text-align:center;border-top:1px solid #e5e7eb;padding-top:20px;">
+Este es un mensaje automático, por favor no responder.
+</td>
+</tr>
+
+</table>
+</td>
+</tr>
 </table>';
 
             $mail->AltBody = "Restablecimiento de contraseña:\n\n$resetLink\n\n";
@@ -213,16 +215,19 @@ class AuthController
 
             echo json_encode([
                 'status' => 'success',
-                'message' => 'Si el correo existe, se ha enviado un enlace de recuperación.'
+                'message' => 'Mensaje enviado. Revise su correo para restablecer la contraseña.'
             ]);
 
         } catch (Throwable $e) {
+
             http_response_code(500);
-            echo json_encode(['status' => 'error', 'message' => 'No se pudo enviar el correo']);
+            echo json_encode([
+                'status' => 'error',
+                'message' => 'No se pudo enviar el correo'
+            ]);
         }
     }
 
- 
     public function resetPassword(): void
     {
         $token = trim((string) ($_POST['token'] ?? ''));
@@ -262,7 +267,6 @@ class AuthController
         echo json_encode(['status'=>'success','message'=>'Contraseña restablecida correctamente']);
     }
 
-    
     public function changePassword(): void
     {
         $username = trim((string) ($_POST['username'] ?? ''));
