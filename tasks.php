@@ -80,6 +80,20 @@ $section_id = (int)($_GET['section_id'] ?? 0);
     return v.replace('T', ' ') + ':00';
   }
 
+
+  function validateFilesBeforeUpload(fileList) {
+    const allowedExt = ['pdf', 'zip', 'jpg', 'jpeg'];
+    const maxSize = 500 * 1024;
+    const files = Array.from(fileList || []);
+    if (!files.length) return 'Seleccione al menos un archivo.';
+    for (const f of files) {
+      const ext = String(f.name || '').split('.').pop().toLowerCase();
+      if (!allowedExt.includes(ext)) return 'Solo se permiten archivos PDF, ZIP o JPG.';
+      if (Number(f.size || 0) > maxSize) return `El archivo ${f.name} supera el máximo de 500 KB.`;
+    }
+    return null;
+  }
+
   function dueExpired(a) {
     return !!(a?.due_at && (new Date(a.due_at.replace(' ', 'T')) < new Date()));
   }
@@ -157,7 +171,8 @@ $section_id = (int)($_GET['section_id'] ?? 0);
         <strong>Archivos adjuntos a la tarea</strong>
         <div class="muted mt-6">Puede subir uno o varios archivos (enunciado, rúbrica, anexos, etc.).</div>
         <form id="formUploadInstructions" method="post" enctype="multipart/form-data" class="mt-8">
-          <input type="file" name="files[]" multiple required>
+          <input type="file" name="files[]" multiple required accept=".pdf,.zip,.jpg,.jpeg">
+              <div class="muted mt-6">Formatos permitidos: PDF, ZIP o JPG. Tamaño máximo: 500 KB por archivo.</div>
           <button class="btn" type="submit">Subir archivo(s)</button>
           <span class="muted" id="msgUploadRes"></span>
         </form>

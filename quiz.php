@@ -56,6 +56,33 @@ include __DIR__ . '/components/header.php';
       .replace(/'/g, '&#39;');
   }
 
+  function quizStatusLabel(status) {
+    const map = {
+      IN_PROGRESS: 'En progreso',
+      SUBMITTED: 'Enviado',
+      GRADED: 'Calificado'
+    };
+    return map[String(status || '').toUpperCase()] || String(status || '');
+  }
+
+  function questionTypeLabel(type) {
+    const map = {
+      SHORT: 'Respuesta corta',
+      MCQ: 'Selección única',
+      TF: 'Verdadero/Falso'
+    };
+    return map[String(type || '').toUpperCase()] || String(type || '');
+  }
+
+  function resultsModeLabel(mode) {
+    const map = {
+      NO: 'No mostrar resultados',
+      AFTER_SUBMIT: 'Después de enviar',
+      AFTER_DUE: 'Después del cierre'
+    };
+    return map[String(mode || '').toUpperCase()] || String(mode || '');
+  }
+
   function getPager(sectionId) {
     if (!__pagerState[sectionId]) {
       __pagerState[sectionId] = { page: 1, draft: {} };
@@ -355,7 +382,7 @@ include __DIR__ . '/components/header.php';
         <div style="display:flex; justify-content:space-between; gap:10px; align-items:center;">
           <div>
             <strong>${escapeHtml(r.student_nombre || '')}</strong>
-            <div class="muted">Estado: ${escapeHtml(r.status)} — Nota: ${r.score}</div>
+            <div class="muted">Estado: ${escapeHtml(quizStatusLabel(r.status))} — Nota: ${r.score}</div>
             <div class="muted">Inicio: ${escapeHtml(r.started_at)} — Fin: ${escapeHtml(r.finished_at || '')}</div>
           </div>
           <button class="btn" data-kind="attemptReview" data-attempt="${r.id}" data-quiz="${quizId}">
@@ -381,7 +408,7 @@ include __DIR__ . '/components/header.php';
       if (q.type === 'SHORT') {
         return `
           <div class="card" style="padding:10px; margin-top:8px;">
-            <div><strong>[SHORT] (${maxPts} pts)</strong></div>
+            <div><strong>[${escapeHtml(questionTypeLabel('SHORT'))}] (${maxPts} pts)</strong></div>
             <div class="mt-6">${escapeHtml(q.question_text)}</div>
             <div class="muted mt-6">Respuesta del estudiante:</div>
             <div style="margin-top:4px;">${escapeHtml(a.answer_text || '(sin respuesta)')}</div>
@@ -404,7 +431,7 @@ include __DIR__ . '/components/header.php';
 
       return `
         <div class="card" style="padding:10px; margin-top:8px;">
-          <div><strong>[${escapeHtml(q.type)}] (${maxPts} pts)</strong></div>
+          <div><strong>[${escapeHtml(questionTypeLabel(q.type))}] (${maxPts} pts)</strong></div>
           <div class="mt-6">${escapeHtml(q.question_text)}</div>
           <div class="muted mt-6">Elegida: ${escapeHtml(chosen?.option_text || '(sin respuesta)')}</div>
           <div class="muted">Correcta: ${escapeHtml(correct?.option_text || '(no definida)')}</div>
@@ -416,7 +443,7 @@ include __DIR__ . '/components/header.php';
     return `
       <div class="card card-tight">
         <strong>Revisión — ${escapeHtml(att.student_nombre || '')}</strong>
-        <div class="muted">Estado actual: ${escapeHtml(att.status)}</div>
+        <div class="muted">Estado actual: ${escapeHtml(quizStatusLabel(att.status))}</div>
 
         ${blocks}
 
@@ -473,13 +500,13 @@ include __DIR__ . '/components/header.php';
           Ver revisión
         </button>
         <div id="student_review_box" class="mt-10"></div>
-        <div class="muted">Estado: ${escapeHtml(att.status)}</div>
+        <div class="muted">Estado: ${escapeHtml(quizStatusLabel(att.status))}</div>
 
         ${allowed ? `
           <div class="muted">Nota: ${att.score}</div>
           <div class="muted">Puntos: ${att.raw_points}/${att.max_points}</div>
         ` : `
-          <div class="muted">Los resultados no están disponibles según la configuración del quiz.</div>
+          <div class="muted">Los resultados no están disponibles según la configuración de la evaluación.</div>
           ${msgDue}
         `}
 
@@ -783,7 +810,7 @@ include __DIR__ . '/components/header.php';
         const pending = (att.status !== 'GRADED');
         return `
           <div class="card" style="padding:10px; margin-top:8px;">
-            <div><strong>[SHORT]</strong> <span class="muted">(${gotPts}/${maxPts} pts)</span></div>
+            <div><strong>[${escapeHtml(questionTypeLabel('SHORT'))}]</strong> <span class="muted">(${gotPts}/${maxPts} pts)</span></div>
             <div class="mt-6">${escapeHtml(q.question_text)}</div>
             <div class="muted mt-6">Tu respuesta:</div>
             <div style="margin-top:4px;">${escapeHtml(a.answer_text || '(sin respuesta)')}</div>
@@ -804,7 +831,7 @@ include __DIR__ . '/components/header.php';
       return `
         <div class="card" style="padding:10px; margin-top:8px;">
           <div style="display:flex; justify-content:space-between; gap:10px;">
-            <div><strong>[${escapeHtml(q.type)}]</strong> <span class="muted">(${gotPts}/${maxPts} pts)</span></div>
+            <div><strong>[${escapeHtml(questionTypeLabel(q.type))}]</strong> <span class="muted">(${gotPts}/${maxPts} pts)</span></div>
             <div>${badge}</div>
           </div>
           <div class="mt-6">${escapeHtml(q.question_text)}</div>
@@ -821,7 +848,7 @@ include __DIR__ . '/components/header.php';
     return `
       <div class="card card-tight">
         <strong>Revisión del intento</strong>
-        <div class="muted">Estado: ${escapeHtml(att.status)} — Nota: ${att.score} — Puntos: ${att.raw_points}/${att.max_points}</div>
+        <div class="muted">Estado: ${escapeHtml(quizStatusLabel(att.status))} — Nota: ${att.score} — Puntos: ${att.raw_points}/${att.max_points}</div>
         ${items}
       </div>
     `;

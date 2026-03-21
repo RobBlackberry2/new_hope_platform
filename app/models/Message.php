@@ -43,6 +43,14 @@ class Message {
         return $res ? $res->fetch_all(MYSQLI_ASSOC) : [];
     }
 
+
+
+    public function delete(int $id, int $user_id): bool {
+        $stmt = $this->db->prepare('DELETE FROM messages WHERE id = ? AND (from_user_id = ? OR to_user_id = ?)');
+        $stmt->bind_param('iii', $id, $user_id, $user_id);
+        return (bool)$stmt->execute() && $stmt->affected_rows > 0;
+    }
+
     public function markRead(int $id, int $user_id): bool {
         $stmt = $this->db->prepare('UPDATE messages SET read_at = NOW() WHERE id = ? AND to_user_id = ?');
         $stmt->bind_param('ii', $id, $user_id);

@@ -1,4 +1,4 @@
-    <?php
+<?php
 date_default_timezone_set('America/Costa_Rica');
 $action = $_GET['action'] ?? '';
 $downloadActions = ['resources_download','submission_files_download'];
@@ -15,6 +15,8 @@ require_once __DIR__ . '/app/controllers/VirtualCampusController.php';
 require_once __DIR__ . '/app/controllers/AssignementResourseController.php';
 require_once __DIR__ . '/app/controllers/QuizController.php';
 require_once __DIR__ . '/app/controllers/MicrosoftOAuthController.php';
+require_once __DIR__ . '/app/controllers/ForumController.php';
+require_once __DIR__ . '/app/controllers/GamificationController.php';
 
 $action = $_GET['action'] ?? '';
 
@@ -27,6 +29,8 @@ $vc = new VirtualCampusController();
 $ar = new AssignementResourseController();
 $qz = new QuizController();
 $ms = new MicrosoftOAuthController();
+$forum = new ForumController();
+$gamification = new GamificationController();
 
 try {
     switch ($action) {
@@ -35,9 +39,6 @@ try {
         case 'register': $auth->register(); break;
         case 'me': $auth->me(); break;
         case 'logout': $auth->logout(); break;
-        case 'forgot_password': $auth->forgotPassword(); break;
-case 'reset_password': $auth->resetPassword(); break;
-case 'change_password': $auth->changePassword(); break;
 
         // Gestión de usuarios (ADMIN)
         case 'users_list': $users->list(); break;
@@ -50,7 +51,6 @@ case 'change_password': $auth->changePassword(); break;
         case 'users_setEstado': $users->setEstado(); break;
         case 'users_delete': $users->delete(); break;
 
-
         // Administrativo - Matriculas (ADMIN)
         case 'students_create': $mat->createStudent(); break;
         case 'students_get': $mat->getStudent(); break;
@@ -58,17 +58,23 @@ case 'change_password': $auth->changePassword(); break;
         case 'students_update': $mat->updateStudent(); break;
         case 'students_updateUserId': $mat->updateStudentUserId(); break;
         case 'students_delete': $mat->deleteStudent(); break;
+        case 'students_restore': $mat->restoreStudent(); break;
 
         case 'enrollments_create': $mat->createEnrollment(); break;
         case 'enrollments_list': $mat->listEnrollments(); break;
         case 'enrollments_updateEstado': $mat->updateEnrollmentEstado(); break;
+        case 'enrollments_updateYear': $mat->updateEnrollmentYear(); break;
         case 'enrollments_delete': $mat->deleteEnrollment(); break;
+        case 'enrollments_restore': $mat->restoreEnrollment(); break;
         case 'enrollments_capacity': $mat->capacity(); break;
+        case 'enrollments_paymentControl_get': $mat->getEnrollmentPaymentControl(); break;
+        case 'enrollments_paymentControl_save': $mat->saveEnrollmentPaymentControl(); break;
 
         // Mensajería
         case 'messages_inbox': $mess->inbox(); break;
         case 'messages_sent': $mess->sent(); break;
         case 'messages_send': $mess->send(); break;
+        case 'messages_delete': $mess->delete(); break;
 
         // E-Learning / Virtual Campus (Curso + Secciones)
         case 'course_get': $vc->getCourse(); break;
@@ -125,6 +131,27 @@ case 'change_password': $auth->changePassword(); break;
         case 'quiz_attempt_grade_short': $qz->gradeShort(); break;
         case 'quiz_attempt_review_student': $qz->studentAttemptReview(); break;
 
+
+        // Foros de discusión
+        case 'forums_upsert': $forum->upsertForum(); break;
+        case 'forums_getBySection': $forum->getForumBySection(); break;
+        case 'forums_delete': $forum->deleteForum(); break;
+        case 'forum_comments_list': $forum->listComments(); break;
+        case 'forum_comments_create': $forum->createComment(); break;
+        case 'forum_comments_delete': $forum->deleteComment(); break;
+        case 'forum_comments_report': $forum->reportComment(); break;
+
+        // Gamificación
+        case 'gamification_dashboard': $gamification->dashboard(); break;
+        case 'gamification_create': $gamification->createChallenge(); break;
+        case 'gamification_update': $gamification->updateChallenge(); break;
+        case 'gamification_get': $gamification->getChallenge(); break;
+        case 'gamification_enroll': $gamification->enroll(); break;
+        case 'gamification_unenroll': $gamification->unenroll(); break;
+        case 'gamification_participants': $gamification->participants(); break;
+        case 'gamification_assign_reward': $gamification->assignReward(); break;
+        case 'gamification_delete': $gamification->deleteChallenge(); break;
+
         case 'onedrive_connect': $ms->connect(); break;
         case 'onedrive_callback': $ms->callback(); break;
 
@@ -134,10 +161,5 @@ case 'change_password': $auth->changePassword(); break;
     }
 } catch (Throwable $ex) {
     http_response_code(500);
-    echo json_encode([
-        'status' => 'error',
-        'message' => $ex->getMessage(),
-        'file' => $ex->getFile(),
-        'line' => $ex->getLine()
-    ]);
+    echo json_encode(['status' => 'error', 'message' => 'Error interno', 'detail' => $ex->getMessage()]);
 }

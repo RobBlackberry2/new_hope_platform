@@ -19,8 +19,8 @@ class Student {
         $telefono_encargado = $data['telefono_encargado'] ?? null;
 
         $stmt = $this->db->prepare(
-            'INSERT INTO students (user_id, cedula, nombre, fecha_nacimiento, grado, seccion, encargado, telefono_encargado)
-             VALUES (?,?,?,?,?,?,?,?)'
+            'INSERT INTO students (user_id, cedula, nombre, fecha_nacimiento, grado, seccion, encargado, telefono_encargado, archived_at)
+             VALUES (?,?,?,?,?,?,?,?,NULL)'
         );
         $stmt->bind_param('isssisss', $user_id, $cedula, $nombre, $fecha_nacimiento, $grado, $seccion, $encargado, $telefono_encargado);
         if (!$stmt->execute()) return false;
@@ -36,17 +36,38 @@ class Student {
     }
 
     public function getByUserId(int $user_id): ?array {
-        $stmt = $this->db->prepare('SELECT * FROM students WHERE user_id = ? LIMIT 1');
+        $stmt = $this->db->prepare('SELECT * FROM students WHERE user_id = ? AND archived_at IS NULL LIMIT 1');
         $stmt->bind_param('i', $user_id);
         $stmt->execute();
         $row = $stmt->get_result()->fetch_assoc();
         return $row ?: null;
     }
 
-    public function list(int $limit = 200): array {
+    public function list(int $limit = 200, bool $include_archived = false): array {
         $limit = max(1, min(1000, $limit));
-        $res = $this->db->query('SELECT * FROM students ORDER BY id DESC LIMIT ' . $limit);
+        $where = $include_archived ? '' : ' WHERE archived_at IS NULL';
+        $res = $this->db->query('SELECT * FROM students' . $where . ' ORDER BY archived_at IS NULL DESC, id DESC LIMIT ' . $limit);
         return $res ? $res->fetch_all(MYSQLI_ASSOC) : [];
+    }
+
+    public function archive(int $id): bool {
+        $stmt = $this->db->prepare('UPDATE students SET archived_at = NOW() WHERE id = ? AND archived_at IS NULL');
+        $stmt->bind_param('i', $id);
+        return (bool)$stmt->execute();
+    }
+
+    public function restore(int $id): bool {
+        $stmt = $this->db->prepare('UPDATE students SET archived_at = NULL WHERE id = ?');
+        $stmt->bind_param('i', $id);
+        return (bool)$stmt->execute();
+    }
+
+    public function isArchived(int $id): bool {
+        $stmt = $this->db->prepare('SELECT archived_at FROM students WHERE id = ? LIMIT 1');
+        $stmt->bind_param('i', $id);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+        return !empty($row['archived_at']);
     }
 
     public function update(int $id, array $data): bool {
@@ -76,11 +97,5 @@ class Student {
         $stmt->bind_param('ii', $user_id, $id);
         return (bool)$stmt->execute();
     }
+}
 
-    public function delete(int $id): bool {
-        $stmt = $this->db->prepare('DELETE FROM students WHERE id = ?');
-        $stmt->bind_param('i', $id);
-        return (bool)$stmt->execute();
-    }
-    
-    }

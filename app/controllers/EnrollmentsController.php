@@ -39,7 +39,8 @@ class EnrollmentsController
         require_login();
         require_role(['ADMIN']);
         $model = new Student();
-        echo json_encode(['status' => 'success', 'data' => $model->list((int) ($_GET['limit'] ?? 200))]);
+        $includeArchived = !empty($_GET['include_archived']);
+        echo json_encode(['status' => 'success', 'data' => $model->list((int) ($_GET['limit'] ?? 200), $includeArchived)]);
     }
 
     public function updateStudent(): void
@@ -107,13 +108,19 @@ class EnrollmentsController
             return;
         }
 
-        $enrModel->deleteByStudentId($id);
+        $enrModel->archiveByStudentId($id);
 
-        if ($studentModel->delete($id)) {
-            echo json_encode(['status' => 'success']);
+        if (!empty($student['user_id'])) {
+            require_once __DIR__ . '/../models/User.php';
+            $userModel = new User();
+            $userModel->setEstado((int) $student['user_id'], 'INACTIVO');
+        }
+
+        if ($studentModel->archive($id)) {
+            echo json_encode(['status' => 'success', 'message' => 'Estudiante archivado']);
         } else {
             http_response_code(500);
-            echo json_encode(['status' => 'error', 'message' => 'No se pudo eliminar']);
+            echo json_encode(['status' => 'error', 'message' => 'No se pudo archivar']);
         }
     }
 
@@ -184,7 +191,8 @@ class EnrollmentsController
         require_login();
         require_role(['ADMIN']);
         $model = new Enrollment();
-        echo json_encode(['status' => 'success', 'data' => $model->list((int) ($_GET['limit'] ?? 200))]);
+        $includeArchived = !empty($_GET['include_archived']);
+        echo json_encode(['status' => 'success', 'data' => $model->list((int) ($_GET['limit'] ?? 200), $includeArchived)]);
     }
 
     public function updateEnrollmentEstado(): void
@@ -233,6 +241,66 @@ class EnrollmentsController
         echo json_encode(['status' => 'success']);
     }
 
+    public function updateEnrollmentYear(): void
+    {
+        require_login();
+        require_role(['ADMIN']);
+
+        $id = (int) ($_POST['id'] ?? 0);
+        $year = (int) ($_POST['year'] ?? 0);
+
+        if (!$id || !$year) {
+            http_response_code(400);
+            echo json_encode(['status' => 'error', 'message' => 'Faltan datos']);
+            return;
+        }
+
+        $currentYear = (int) date('Y');
+        $maxYear = $currentYear + 1;
+        if ($year < 2000 || $year > $maxYear) {
+            http_response_code(400);
+            echo json_encode(['status' => 'error', 'message' => "Año inválido. Debe estar entre 2000 y {$maxYear}."]);
+            return;
+        }
+
+        $enrModel = new Enrollment();
+        $enr = $enrModel->get($id);
+        if (!$enr) {
+            http_response_code(404);
+            echo json_encode(['status' => 'error', 'message' => 'Matrícula no existe']);
+            return;
+        }
+
+        $studentModel = new Student();
+        $student = $studentModel->get((int) $enr['student_id']);
+        if (!$student) {
+            http_response_code(404);
+            echo json_encode(['status' => 'error', 'message' => 'Estudiante no existe']);
+            return;
+        }
+
+        $grado = (int) ($student['grado'] ?? 0);
+        $LIMIT = 90;
+        $used = $enrModel->countUsedForGradeExcludingEnrollment($grado, $year, $id);
+
+        if ($used >= $LIMIT) {
+            http_response_code(409);
+            echo json_encode([
+                'status' => 'error',
+                'message' => "No hay cupos disponibles para grado {$grado} en {$year} (límite {$LIMIT})."
+            ]);
+            return;
+        }
+
+        if (!$enrModel->updateYear($id, $year)) {
+            http_response_code(500);
+            echo json_encode(['status' => 'error', 'message' => 'No se pudo actualizar el año de la matrícula']);
+            return;
+        }
+
+        echo json_encode(['status' => 'success']);
+    }
+
 
     public function deleteEnrollment(): void
     {
@@ -258,15 +326,98 @@ class EnrollmentsController
 
         $student_id = (int) ($enr['student_id'] ?? 0);
 
-        if (!$enrModel->delete($id)) {
+        if (!$enrModel->archive($id)) {
             http_response_code(500);
-            echo json_encode(['status' => 'error', 'message' => 'No se pudo eliminar matrícula']);
+            echo json_encode(['status' => 'error', 'message' => 'No se pudo archivar la matrícula']);
             return;
         }
 
         if ($student_id > 0) {
-            $enrModel->deleteByStudentId($student_id);
-            $studentModel->delete($student_id);
+            $studentModel->archive($student_id);
+            $enrModel->archiveByStudentId($student_id);
+        }
+
+        echo json_encode(['status' => 'success', 'message' => 'Matrícula y estudiante archivados']);
+    }
+    public function getEnrollmentPaymentControl(): void
+    {
+        require_login();
+        require_role(['ADMIN']);
+
+        $id = (int) ($_GET['id'] ?? 0);
+        $paymentYear = (int) ($_GET['payment_year'] ?? 0);
+
+        if (!$id) {
+            http_response_code(400);
+            echo json_encode(['status' => 'error', 'message' => 'Falta id de matrícula']);
+            return;
+        }
+
+        $model = new Enrollment();
+        $enrollment = $model->get($id);
+        if (!$enrollment) {
+            http_response_code(404);
+            echo json_encode(['status' => 'error', 'message' => 'Matrícula no existe']);
+            return;
+        }
+
+        if (!$paymentYear) {
+            $paymentYear = (int) ($enrollment['year'] ?? date('Y'));
+        }
+
+        echo json_encode([
+            'status' => 'success',
+            'enrollment' => $enrollment,
+            'payment_year' => $paymentYear,
+            'data' => $model->getPaymentControl($id, $paymentYear),
+        ]);
+    }
+
+    public function saveEnrollmentPaymentControl(): void
+    {
+        require_login();
+        require_role(['ADMIN']);
+
+        $id = (int) ($_POST['id'] ?? 0);
+        $paymentYear = (int) ($_POST['payment_year'] ?? 0);
+
+        if (!$id) {
+            http_response_code(400);
+            echo json_encode(['status' => 'error', 'message' => 'Falta id de matrícula']);
+            return;
+        }
+
+        if (!$paymentYear) {
+            http_response_code(400);
+            echo json_encode(['status' => 'error', 'message' => 'Falta el año del control de pagos']);
+            return;
+        }
+
+        $payload = $_POST['items'] ?? '[]';
+        if (is_string($payload)) {
+            $items = json_decode($payload, true);
+        } else {
+            $items = $payload;
+        }
+
+        if (!is_array($items)) {
+            http_response_code(400);
+            echo json_encode(['status' => 'error', 'message' => 'Formato de pagos inválido']);
+            return;
+        }
+
+        $model = new Enrollment();
+        $enrollment = $model->get($id);
+        if (!$enrollment) {
+            http_response_code(404);
+            echo json_encode(['status' => 'error', 'message' => 'Matrícula no existe']);
+            return;
+        }
+
+        if (!$model->savePaymentControl($id, $paymentYear, $items)) {
+            http_response_code(500);
+            echo json_encode(['status' => 'error', 'message' => 'No se pudo guardar el control de pagos']);
+            return;
         }
 
         echo json_encode(['status' => 'success']);
@@ -323,6 +474,81 @@ class EnrollmentsController
         }
 
         echo json_encode(['status' => 'success', 'year' => $year, 'data' => $out]);
+    }
+
+
+    public function restoreStudent(): void
+    {
+        require_login();
+        require_role(['ADMIN']);
+
+        $id = (int) ($_POST['id'] ?? 0);
+        if (!$id) {
+            http_response_code(400);
+            echo json_encode(['status' => 'error', 'message' => 'Falta id']);
+            return;
+        }
+
+        $studentModel = new Student();
+        $enrModel = new Enrollment();
+        $student = $studentModel->get($id);
+        if (!$student) {
+            http_response_code(404);
+            echo json_encode(['status' => 'error', 'message' => 'Estudiante no existe']);
+            return;
+        }
+
+        if (!$studentModel->restore($id)) {
+            http_response_code(500);
+            echo json_encode(['status' => 'error', 'message' => 'No se pudo restaurar']);
+            return;
+        }
+
+        $enrModel->restoreByStudentId($id);
+
+        if (!empty($student['user_id'])) {
+            require_once __DIR__ . '/../models/User.php';
+            $userModel = new User();
+            $userModel->setEstado((int) $student['user_id'], 'ACTIVO');
+        }
+
+        echo json_encode(['status' => 'success', 'message' => 'Estudiante restaurado']);
+    }
+
+    public function restoreEnrollment(): void
+    {
+        require_login();
+        require_role(['ADMIN']);
+
+        $id = (int) ($_POST['id'] ?? 0);
+        if (!$id) {
+            http_response_code(400);
+            echo json_encode(['status' => 'error', 'message' => 'Falta id']);
+            return;
+        }
+
+        $enrModel = new Enrollment();
+        $enr = $enrModel->get($id);
+        if (!$enr) {
+            http_response_code(404);
+            echo json_encode(['status' => 'error', 'message' => 'Matrícula no existe']);
+            return;
+        }
+
+        $studentModel = new Student();
+        if ($studentModel->isArchived((int) ($enr['student_id'] ?? 0))) {
+            http_response_code(409);
+            echo json_encode(['status' => 'error', 'message' => 'Primero debes restaurar al estudiante']);
+            return;
+        }
+
+        if (!$enrModel->restore($id)) {
+            http_response_code(500);
+            echo json_encode(['status' => 'error', 'message' => 'No se pudo restaurar la matrícula']);
+            return;
+        }
+
+        echo json_encode(['status' => 'success', 'message' => 'Matrícula restaurada']);
     }
 
     public function getStudent(): void

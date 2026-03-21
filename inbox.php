@@ -46,12 +46,26 @@ include __DIR__ . '/components/header.php';
 </section>
 
 <script>
-function renderMessages(list){
+function escapeHtml(v){
+  return String(v || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function renderMessages(list, boxType){
   if (!list || !list.length) return '<div class="muted">Sin mensajes.</div>';
   return list.slice(0,20).map(m=>`<div class="card card-compact">
-    <div><strong>${m.asunto}</strong></div>
-    <div class="muted">${m.created_at}</div>
-    <div>${(m.cuerpo||'').replace(/</g,'&lt;')}</div>
+    <div style="display:flex; justify-content:space-between; gap:12px; align-items:flex-start; margin-bottom:8px;">
+      <div style="flex:1; min-width:0;">
+        <div><strong>${escapeHtml(m.asunto)}</strong></div>
+        <div class="muted">${escapeHtml(m.created_at)}</div>
+      </div>
+      <button class="btn danger btn-sm" data-kind="deleteMessage" data-box="${boxType}" data-id="${m.id}">Eliminar</button>
+    </div>
+    <div>${escapeHtml(m.cuerpo)}</div>
   </div>`).join('');
 }
 
@@ -85,13 +99,13 @@ async function loadActiveUsersForInbox() {
 async function loadAll(){
   try {
     const i = await api('messages_inbox', { method:'GET' });
-    document.getElementById('inbox').innerHTML = renderMessages(i.data);
+    document.getElementById('inbox').innerHTML = renderMessages(i.data, 'inbox');
   } catch (err){
     document.getElementById('inbox').textContent = err?.json?.message || 'Error';
   }
   try {
     const s = await api('messages_sent', { method:'GET' });
-    document.getElementById('sent').innerHTML = renderMessages(s.data);
+    document.getElementById('sent').innerHTML = renderMessages(s.data, 'sent');
   } catch (err){
     document.getElementById('sent').textContent = err?.json?.message || 'Error';
   }
@@ -110,6 +124,32 @@ document.getElementById('formSend').addEventListener('submit', async (e)=>{
     await loadAll();
   } catch (err){
     msg.textContent = err?.json?.message || 'Error enviando';
+  }
+});
+
+
+
+document.addEventListener('click', async (e) => {
+  const btn = e.target.closest('[data-kind="deleteMessage"]');
+  if (!btn) return;
+
+  const id = btn.getAttribute('data-id');
+  if (!id) return;
+  if (!confirm('¿Desea eliminar este mensaje?')) return;
+
+  const originalText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Eliminando...';
+
+  try {
+    const fd = new FormData();
+    fd.append('id', id);
+    await api('messages_delete', { data: fd, isForm: true });
+    await loadAll();
+  } catch (err) {
+    alert(err?.json?.message || 'No se pudo eliminar el mensaje');
+    btn.disabled = false;
+    btn.textContent = originalText;
   }
 });
 

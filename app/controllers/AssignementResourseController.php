@@ -80,6 +80,44 @@ class AssignementResourseController
         }
     }
 
+
+    private function validateUploadFile(array $file): ?string
+    {
+        $err = (int)($file['error'] ?? UPLOAD_ERR_NO_FILE);
+        if ($err !== UPLOAD_ERR_OK) {
+            return $this->uploadErrorMessage($err);
+        }
+
+        $size = (int)($file['size'] ?? 0);
+        $maxSize = 500 * 1024;
+        if ($size <= 0) return 'Archivo inválido o vacío.';
+        if ($size > $maxSize) return 'El archivo excede el tamaño máximo permitido de 500 KB.';
+
+        $original = (string)($file['name'] ?? '');
+        $ext = strtolower(pathinfo($original, PATHINFO_EXTENSION));
+        $allowedExt = ['pdf', 'zip', 'jpg', 'jpeg'];
+        if (!in_array($ext, $allowedExt, true)) {
+            return 'Formato no permitido. Solo se aceptan PDF, ZIP o JPG.';
+        }
+
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $detectedMime = $finfo ? (string)finfo_file($finfo, (string)$file['tmp_name']) : '';
+        if ($finfo) finfo_close($finfo);
+
+        $allowedByExt = [
+            'pdf' => ['application/pdf'],
+            'zip' => ['application/zip', 'application/x-zip-compressed', 'multipart/x-zip'],
+            'jpg' => ['image/jpeg'],
+            'jpeg' => ['image/jpeg'],
+        ];
+
+        if ($detectedMime !== '' && !in_array($detectedMime, $allowedByExt[$ext] ?? [], true)) {
+            return 'El archivo no coincide con un tipo permitido (PDF, ZIP o JPG).';
+        }
+
+        return null;
+    }
+
     private function listStudentsForCourse(int $course_id): array
     {
         $c = (new Course())->get($course_id);
@@ -155,8 +193,13 @@ class AssignementResourseController
         $folder = "course_{$course_id}/section_{$section_id}/{$subfolder}";
 
         $createdIds = [];
+        $errors = [];
         foreach ($uploads as $file) {
-            if (($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) continue;
+            $validationError = $this->validateUploadFile($file);
+            if ($validationError !== null) {
+                $errors[] = $validationError;
+                continue;
+            }
 
             $original = basename($file['name']);
             $mime = $file['type'] ?? 'application/octet-stream';
@@ -181,7 +224,17 @@ class AssignementResourseController
             if ($id) $createdIds[] = $id;
         }
 
-        echo json_encode(['status' => 'success', 'ids' => $createdIds]);
+        if (count($createdIds) === 0) {
+            http_response_code(400);
+            echo json_encode([
+                'status' => 'error',
+                'message' => 'No se pudo subir ningún archivo.',
+                'detail' => implode(' | ', array_unique($errors))
+            ]);
+            return;
+        }
+
+        echo json_encode(['status' => 'success', 'ids' => $createdIds, 'errors' => array_values(array_unique($errors))]);
     }
 
     public function listResources(): void
@@ -699,9 +752,9 @@ class AssignementResourseController
         $errors = [];
 
         foreach ($uploads as $file) {
-            $err = $file['error'] ?? UPLOAD_ERR_NO_FILE;
-            if ($err !== UPLOAD_ERR_OK) {
-                $errors[] = $this->uploadErrorMessage((int)$err);
+            $validationError = $this->validateUploadFile($file);
+            if ($validationError !== null) {
+                $errors[] = $validationError;
                 continue;
             }
 

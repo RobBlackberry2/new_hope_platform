@@ -19,6 +19,28 @@ class MessagesController {
         echo json_encode(['status' => 'success', 'data' => $data]);
     }
 
+
+
+    public function delete(): void {
+        require_login();
+        $u = current_user();
+        $id = (int)($_POST['id'] ?? 0);
+
+        if ($id <= 0) {
+            http_response_code(400);
+            echo json_encode(['status' => 'error', 'message' => 'ID inválido']);
+            return;
+        }
+
+        $model = new Message();
+        if ($model->delete($id, (int)$u['id'])) {
+            echo json_encode(['status' => 'success']);
+        } else {
+            http_response_code(404);
+            echo json_encode(['status' => 'error', 'message' => 'No se pudo eliminar el mensaje']);
+        }
+    }
+
     public function send(): void {
         require_login();
         $u = current_user();

@@ -76,7 +76,7 @@ class VirtualCampusController
         $descripcion = trim($_POST['descripcion'] ?? '');
         $semana = (int) ($_POST['semana'] ?? 1);
         $orden = (int) ($_POST['orden'] ?? 0);
-        $tipo = trim($_POST['tipo'] ?? 'RECURSOS');
+        $tipo = strtoupper(trim($_POST['tipo'] ?? 'RECURSOS'));
 
         if (!$course_id || $titulo === '') {
             http_response_code(400);
@@ -92,6 +92,13 @@ class VirtualCampusController
                 echo json_encode(['status' => 'error', 'message' => 'No puedes modificar cursos de otro docente']);
                 return;
             }
+        }
+
+        $allowedTipos = ['RECURSOS','TAREA','QUIZ','EXAMEN','AVISO','FORO'];
+        if (!in_array($tipo, $allowedTipos, true)) {
+            http_response_code(400);
+            echo json_encode(['status' => 'error', 'message' => 'Tipo de sección inválido']);
+            return;
         }
 
         $sec = new CourseSection();
@@ -161,7 +168,7 @@ class VirtualCampusController
         $u = current_user();
 
         $id = (int) ($_POST['id'] ?? 0);
-        $tipo = trim($_POST['tipo'] ?? '');
+        $tipo = strtoupper(trim($_POST['tipo'] ?? ''));
         if (!$id || $tipo === '') {
             http_response_code(400);
             echo json_encode(['status' => 'error', 'message' => 'Faltan datos (id, tipo)']);
@@ -184,6 +191,13 @@ class VirtualCampusController
                 echo json_encode(['status' => 'error', 'message' => 'No puedes modificar secciones de otro docente']);
                 return;
             }
+        }
+
+        $allowedTipos = ['RECURSOS','TAREA','QUIZ','EXAMEN','AVISO','FORO'];
+        if (!in_array($tipo, $allowedTipos, true)) {
+            http_response_code(400);
+            echo json_encode(['status' => 'error', 'message' => 'Tipo de sección inválido']);
+            return;
         }
 
         $ok = $secModel->updateTipo($id, $tipo);

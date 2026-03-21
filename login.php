@@ -70,11 +70,6 @@ include __DIR__ . '/components/header.php';
         <button class="btn" type="submit">Entrar</button>
       </div>
 
-      <div style="text-align:center;margin-top:10px;">
-        <a href="recuperar.php">¿Olvidaste tu contraseña?</a> |
-        <a href="cambiar.php">Cambiar contraseña</a>
-      </div>
-
       <div id="msg" class="muted"></div>
     </form>
   </div>

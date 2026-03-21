@@ -76,7 +76,7 @@ $course_id = (int) ($_GET['course_id'] ?? 0);
   }
 
   function sectionTypeSelect(s) {
-    const tipos = ['RECURSOS', 'TAREA', 'QUIZ', 'EXAMEN', 'AVISO'];
+    const tipos = ['RECURSOS', 'TAREA', 'QUIZ', 'EXAMEN', 'AVISO', 'FORO'];
     const current = (s.tipo || 'RECURSOS');
     if (!(IS_ADMIN || IS_DOCENTE)) return '';
     const opts = tipos.map(t => {
@@ -92,6 +92,20 @@ $course_id = (int) ($_GET['course_id'] ?? 0);
   function canShowFilesButton(s) {
     const tipo = String(s?.tipo || 'RECURSOS').toUpperCase();
     return (tipo === 'RECURSOS' || tipo === 'TAREA');
+  }
+
+
+  function validateFilesBeforeUpload(fileList) {
+    const allowedExt = ['pdf', 'zip', 'jpg', 'jpeg'];
+    const maxSize = 500 * 1024;
+    const files = Array.from(fileList || []);
+    if (!files.length) return 'Seleccione al menos un archivo.';
+    for (const f of files) {
+      const ext = String(f.name || '').split('.').pop().toLowerCase();
+      if (!allowedExt.includes(ext)) return 'Solo se permiten archivos PDF, ZIP o JPG.';
+      if (Number(f.size || 0) > maxSize) return `El archivo ${f.name} supera el máximo de 500 KB.`;
+    }
+    return null;
   }
 
   function sectionCardHtml(s) {
@@ -122,7 +136,8 @@ $course_id = (int) ($_GET['course_id'] ?? 0);
   function renderRecursosUI(s) {
     const upload = (IS_ADMIN || IS_DOCENTE) ? `
       <form data-kind="uploadRes" data-section="${s.id}" method="post" enctype="multipart/form-data" class="mt-8">
-        <input type="file" name="files[]" multiple required>
+        <input type="file" name="files[]" multiple required accept=".pdf,.zip,.jpg,.jpeg">
+        <div class="muted mt-6">Formatos permitidos: PDF, ZIP o JPG. Tamaño máximo: 500 KB por archivo.</div>
         <button class="btn" type="submit">Subir recurso</button>
         <span class="muted" data-kind="msgUploadRes" data-section="${s.id}"></span>
       </form>
@@ -150,6 +165,19 @@ $course_id = (int) ($_GET['course_id'] ?? 0);
         <strong>${label}</strong>
         <div class="mt-10">
           <a class="btn" href="${escapeHtml(url)}">Abrir ${label}</a>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderForumLinkUI(s) {
+    const url = `${window.__BASE_URL__}/forum.php?course_id=${encodeURIComponent(String(currentCourse))}&section_id=${encodeURIComponent(String(s.id))}`;
+    return `
+      <div class="card card-tight mt-8">
+        <strong>Foro de discusión</strong>
+        <div class="muted mt-6">Participe en esta conversación en una vista dedicada.</div>
+        <div class="mt-10">
+          <a class="btn" href="${escapeHtml(url)}">Abrir foro</a>
         </div>
       </div>
     `;
@@ -191,6 +219,11 @@ $course_id = (int) ($_GET['course_id'] ?? 0);
 
     if (tipo === 'TAREA') {
       box.innerHTML = renderTaskLinkUI(s);
+      return;
+    }
+
+    if (tipo === 'FORO') {
+      box.innerHTML = renderForumLinkUI(s);
       return;
     }
 
@@ -260,6 +293,7 @@ $course_id = (int) ($_GET['course_id'] ?? 0);
               <option value="QUIZ">Quiz</option>
               <option value="EXAMEN">Examen</option>
               <option value="AVISO">Aviso</option>
+              <option value="FORO">Foro</option>
             </select>
           </label>
           <label>Semana<input name="semana" type="number" value="1" /></label>
