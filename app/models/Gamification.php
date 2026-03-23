@@ -255,7 +255,7 @@ class Gamification
 
         $stmt = $this->db->prepare(
             "SELECT ge.id, ge.challenge_id, ge.student_id, ge.enrolled_at,
-                    s.nombre AS estudiante_nombre, s.seccion, s.grado, u.correo
+                    TRIM(CONCAT(s.nombre, ' ', COALESCE(s.apellidos, ''))) AS estudiante_nombre, s.seccion, s.grado, u.correo
              FROM gamification_enrollments ge
              JOIN students s ON s.id = ge.student_id
              LEFT JOIN users u ON u.id = s.user_id

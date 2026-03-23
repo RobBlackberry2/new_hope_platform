@@ -127,10 +127,10 @@ class AssignementResourseController
         $db = Database::connect();
 
         $stmt = $db->prepare(
-            'SELECT s.id, s.nombre, s.grado, s.seccion, s.user_id
+            'SELECT s.id, TRIM(CONCAT(s.nombre, " ", COALESCE(s.apellidos, ""))) AS nombre, s.grado, s.seccion, s.user_id
              FROM students s
              WHERE s.seccion = ?
-             ORDER BY s.nombre ASC'
+             ORDER BY s.nombre ASC, s.apellidos ASC'
         );
         $seccion = (string)($c['seccion'] ?? '');
         $stmt->bind_param('s', $seccion);

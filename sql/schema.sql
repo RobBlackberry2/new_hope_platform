@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS students (
   user_id INT NULL,
   cedula VARCHAR(30) NULL,
   nombre VARCHAR(120) NOT NULL,
+  apellidos VARCHAR(120) NULL,
   fecha_nacimiento DATE NULL,
   grado TINYINT NOT NULL,
   seccion VARCHAR(10) NULL,
@@ -31,7 +32,6 @@ CREATE TABLE IF NOT EXISTS students (
   CONSTRAINT fk_students_user FOREIGN KEY (user_id) REFERENCES users(id)
     ON UPDATE CASCADE ON DELETE SET NULL
 ) ENGINE=InnoDB;
-
 
 CREATE TABLE IF NOT EXISTS enrollments (
   id INT AUTO_INCREMENT PRIMARY KEY,
@@ -347,6 +347,98 @@ CREATE TABLE IF NOT EXISTS gamification_rewards (
     ON UPDATE CASCADE ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
+CREATE TABLE IF NOT EXISTS sections (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  grado TINYINT NOT NULL,
+  codigo VARCHAR(10) NOT NULL,
+  docente_guia_user_id INT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_sections_codigo (codigo),
+  UNIQUE KEY uq_sections_grado_codigo (grado, codigo),
+  CONSTRAINT fk_sections_docente_guia FOREIGN KEY (docente_guia_user_id) REFERENCES users(id)
+    ON UPDATE CASCADE ON DELETE SET NULL
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS academic_rubrics (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  subject_name VARCHAR(120) NOT NULL,
+  trimester TINYINT NOT NULL,
+  rubric_name VARCHAR(150) NOT NULL,
+  percentage_value DECIMAL(5,2) NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT chk_academic_rubrics_trimester CHECK (trimester BETWEEN 1 AND 3),
+  CONSTRAINT chk_academic_rubrics_percentage CHECK (percentage_value > 0 AND percentage_value <= 100)
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS academic_grades (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  student_id INT NOT NULL,
+  subject_name VARCHAR(120) NOT NULL,
+  academic_year SMALLINT NOT NULL,
+  trimester TINYINT NOT NULL,
+  rubric_id INT NOT NULL,
+  score DECIMAL(5,2) NOT NULL DEFAULT 0,
+  graded_by_user_id INT NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_academic_grade_unique (student_id, subject_name, academic_year, trimester, rubric_id),
+  CONSTRAINT fk_academic_grades_student FOREIGN KEY (student_id) REFERENCES students(id)
+    ON UPDATE CASCADE ON DELETE CASCADE,
+  CONSTRAINT fk_academic_grades_rubric FOREIGN KEY (rubric_id) REFERENCES academic_rubrics(id)
+    ON UPDATE CASCADE ON DELETE CASCADE,
+  CONSTRAINT fk_academic_grades_user FOREIGN KEY (graded_by_user_id) REFERENCES users(id)
+    ON UPDATE CASCADE ON DELETE RESTRICT,
+  CONSTRAINT chk_academic_grades_trimester CHECK (trimester BETWEEN 1 AND 3),
+  CONSTRAINT chk_academic_grades_score CHECK (score >= 0 AND score <= 100)
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS attendance_records (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  student_id INT NOT NULL,
+  section_id INT NOT NULL,
+  section_code VARCHAR(10) NOT NULL,
+  attendance_date DATE NOT NULL,
+  status ENUM('AUSENTE','TARDIA') NOT NULL,
+  taken_by_user_id INT NOT NULL,
+  is_justified TINYINT(1) NOT NULL DEFAULT 0,
+  justified_at DATETIME NULL DEFAULT NULL,
+  justified_by_user_id INT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_attendance_section_date (section_id, attendance_date),
+  KEY idx_attendance_student_date (student_id, attendance_date),
+  KEY idx_attendance_report_active (attendance_date, status, is_justified),
+  CONSTRAINT fk_attendance_student FOREIGN KEY (student_id) REFERENCES students(id)
+    ON UPDATE CASCADE ON DELETE CASCADE,
+  CONSTRAINT fk_attendance_section FOREIGN KEY (section_id) REFERENCES sections(id)
+    ON UPDATE CASCADE ON DELETE RESTRICT,
+  CONSTRAINT fk_attendance_taken_by FOREIGN KEY (taken_by_user_id) REFERENCES users(id)
+    ON UPDATE CASCADE ON DELETE RESTRICT,
+  CONSTRAINT fk_attendance_justified_by FOREIGN KEY (justified_by_user_id) REFERENCES users(id)
+    ON UPDATE CASCADE ON DELETE SET NULL
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS academic_subject_recoveries (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  student_id INT NOT NULL,
+  subject_name VARCHAR(120) NOT NULL,
+  academic_year INT NOT NULL,
+  convocatoria_1 DECIMAL(5,2) DEFAULT NULL,
+  convocatoria_2 DECIMAL(5,2) DEFAULT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_academic_subject_recovery (student_id, subject_name, academic_year),
+  CONSTRAINT fk_academic_subject_recovery_student FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+INSERT IGNORE INTO sections (grado, codigo) VALUES
+  (7, '7-1'), (7, '7-2'), (7, '7-3'),
+  (8, '8-1'), (8, '8-2'), (8, '8-3'),
+  (9, '9-1'), (9, '9-2'), (9, '9-3'),
+  (10, '10-1'), (10, '10-2'), (10, '10-3'),
+  (11, '11-1'), (11, '11-2'), (11, '11-3');
 
 CREATE TABLE IF NOT EXISTS onedrive_tokens (
   id INT AUTO_INCREMENT PRIMARY KEY,
@@ -363,7 +455,4 @@ CREATE TABLE IF NOT EXISTS onedrive_tokens (
 INSERT INTO users (username, password_hash, nombre, correo, telefono, rol, estado)
 VALUES ('admin', '$2y$10$M1ack1Y3bEBXcvOvymPAfOhIS3sW8Q5te.6Q7.jz4Il3PaHYhsZ2.', 'Administrador', 'admin@colegio.local', NULL, 'ADMIN', 'ACTIVO')
 ON DUPLICATE KEY UPDATE username=username;
-
-
-
 

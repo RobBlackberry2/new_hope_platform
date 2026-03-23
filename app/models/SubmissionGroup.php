@@ -39,11 +39,11 @@ class SubmissionGroup
   public function listMembers(int $group_id): array
   {
     $stmt = $this->db->prepare(
-      'SELECT m.student_id, s.nombre, s.seccion, s.grado
+      'SELECT m.student_id, TRIM(CONCAT(s.nombre, " ", COALESCE(s.apellidos, ""))) AS nombre, s.seccion, s.grado
        FROM submission_group_members m
        JOIN students s ON s.id = m.student_id
        WHERE m.group_id = ?
-       ORDER BY s.nombre ASC'
+       ORDER BY s.nombre ASC, s.apellidos ASC'
     );
     $stmt->bind_param('i', $group_id);
     $stmt->execute();

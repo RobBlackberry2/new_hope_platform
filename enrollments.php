@@ -30,10 +30,11 @@ include __DIR__ . '/components/header.php';
   <h3>Matricular estudiante</h3>
   <form id="formStudent" class="grid2">
     <label>Nombre<input name="nombre" required /></label>
+    <label>Apellidos<input name="apellidos" required /></label>
     <label>Cédula<input name="cedula" /></label>
     <label>Fecha nacimiento<input name="fecha_nacimiento" type="date" /></label>
-    <label>Grado (7-11)<input name="grado" type="number" min="7" max="11" value="7" /></label>
-    <label>Sección<input name="seccion" /></label>
+    <label>Nivel<select name="grado" required><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option><option value="11">11</option></select></label>
+    <label>Sección<select name="seccion" required></select></label>
     <label>Encargado<input name="encargado" /></label>
     <label>Teléfono encargado<input name="telefono_encargado" /></label>
     <label>Año lectivo<input name="year" type="number" value="<?= date('Y') ?>" /></label>
@@ -82,7 +83,11 @@ include __DIR__ . '/components/header.php';
       <input type="hidden" name="id" />
 
       <label>Nombre
-        <input name="nombre" disabled />
+        <input name="nombre" required />
+      </label>
+
+      <label>Apellidos
+        <input name="apellidos" required />
       </label>
 
       <label>Cédula
@@ -93,12 +98,18 @@ include __DIR__ . '/components/header.php';
         <input name="fecha_nacimiento" type="date" disabled />
       </label>
 
-      <label>Grado (7-11)
-        <input name="grado" type="number" min="7" max="11" />
+      <label>Nivel
+        <select name="grado" required>
+          <option value="7">7</option>
+          <option value="8">8</option>
+          <option value="9">9</option>
+          <option value="10">10</option>
+          <option value="11">11</option>
+        </select>
       </label>
 
       <label>Sección
-        <input name="seccion" />
+        <select name="seccion" required></select>
       </label>
 
       <label>Encargado
@@ -192,6 +203,9 @@ include __DIR__ . '/components/header.php';
   const paginationStudents = document.getElementById('paginationStudents');
   const paginationEnrollments = document.getElementById('paginationEnrollments');
 
+  const formStudent = document.getElementById('formStudent');
+  const formEditStudent = document.getElementById('formEditStudent');
+
   const PAYMENT_LABELS = {
     matricula: 'Matrícula',
     febrero: 'Febrero',
@@ -206,6 +220,27 @@ include __DIR__ . '/components/header.php';
     noviembre: 'Noviembre',
     diciembre: 'Diciembre'
   };
+
+
+  async function loadSectionsByGrade(grado, targetSelect, selectedValue = '') {
+    if (!targetSelect) return;
+    targetSelect.innerHTML = '<option value="">Cargando secciones...</option>';
+
+    try {
+      const res = await api('attendance_sections_by_grade', { method: 'GET', params: { grado } });
+      const sections = res.data || [];
+      if (!sections.length) {
+        targetSelect.innerHTML = '<option value="">No hay secciones disponibles</option>';
+        return;
+      }
+      targetSelect.innerHTML = sections.map(s => `<option value="${s.codigo}" ${String(s.codigo) === String(selectedValue || '') ? 'selected' : ''}>${escapeHtml(s.codigo)}</option>`).join('');
+      if (!selectedValue && sections[0]) {
+        targetSelect.value = sections[0].codigo;
+      }
+    } catch (err) {
+      targetSelect.innerHTML = '<option value="">Error cargando secciones</option>';
+    }
+  }
 
   function escapeHtml(v) {
     return String(v ?? '')
@@ -233,7 +268,7 @@ include __DIR__ . '/components/header.php';
     const status = archived ? badgeArchived('Estudiante archivado') : '';
     return `<tr style="${archived ? 'opacity:.78;' : ''}">
       <td>
-        <div>${escapeHtml(s.nombre || '')}</div>
+        <div>${escapeHtml(s.nombre_completo || [s.nombre, s.apellidos].filter(Boolean).join(' ') || '')}</div>
         ${status ? `<div class="mt-6">${status}</div>` : ''}
       </td>
       <td>${escapeHtml(s.cedula || '')}</td>
@@ -246,7 +281,7 @@ include __DIR__ . '/components/header.php';
         ${archived
         ? `<button class="btn" data-kind="restore_student" data-id="${s.id}">Restaurar</button>`
         : `<button class="btn" data-kind="edit" data-id="${s.id}">Editar</button>
-             <button class="btn danger" data-kind="archive_student" data-id="${s.id}" data-name="${escapeHtml(s.nombre || ('Estudiante #' + s.id))}">Archivar</button>`}
+             <button class="btn danger" data-kind="archive_student" data-id="${s.id}" data-name="${escapeHtml(s.nombre_completo || [s.nombre, s.apellidos].filter(Boolean).join(' ') || ('Estudiante #' + s.id))}">Archivar</button>`}
       </td>
     </tr>`;
   }
@@ -263,6 +298,30 @@ include __DIR__ . '/components/header.php';
       html += `<option value="${y}" ${y === selectedYear ? 'selected' : ''}>${y}</option>`;
     }
     return html;
+  }
+
+  async function openStudentEditModal(studentId) {
+    try {
+      const j = await api('students_get', { method: 'GET', params: { id: studentId } });
+      const s = j.data;
+      const modal = document.getElementById('modalEdit');
+      const f = document.getElementById('formEditStudent');
+      document.getElementById('msgEdit').textContent = '';
+
+      f.id.value = s.id;
+      f.nombre.value = s.nombre || '';
+      f.apellidos.value = s.apellidos || '';
+      f.cedula.value = s.cedula || '';
+      f.fecha_nacimiento.value = s.fecha_nacimiento || '';
+      f.grado.value = String(s.grado || 7);
+      await loadSectionsByGrade(parseInt(f.grado.value || '7', 10), f.seccion, s.seccion || '');
+      f.encargado.value = s.encargado || '';
+      f.telefono_encargado.value = s.telefono_encargado || '';
+
+      modal.style.display = 'block';
+    } catch (err) {
+      alert(err?.json?.message || 'Error abriendo edición');
+    }
   }
 
 
@@ -302,10 +361,6 @@ include __DIR__ . '/components/header.php';
         ${!archived
         ? `<button class="btn" data-kind="payment_control" data-id="${e.id}" data-year="${escapeHtml(e.year || '')}">Control de Pagos</button>`
         : ''
-      }
-        ${archived
-        ? `<button class="btn" data-kind="restore_enr" data-id="${e.id}">Restaurar</button>`
-        : `<button class="btn danger" data-kind="archive_enr" data-id="${e.id}" data-name="${escapeHtml(e.student_nombre || ('Matrícula #' + e.id))}">Archivar</button>`
       }
       </td>
     </tr>`;
@@ -437,6 +492,8 @@ include __DIR__ . '/components/header.php';
     const filtered = STUDENTS_DATA.filter(s => {
       const matchesSearch =
         (s.nombre || '').toLowerCase().includes(q) ||
+        (s.apellidos || '').toLowerCase().includes(q) ||
+        (s.nombre_completo || '').toLowerCase().includes(q) ||
         (s.cedula || '').toLowerCase().includes(q) ||
         String(s.grado || '').includes(q) ||
         (s.seccion || '').toLowerCase().includes(q);
@@ -652,6 +709,7 @@ include __DIR__ . '/components/header.php';
 
       ms.textContent = 'Estudiante creado y matriculado.';
       e.target.reset();
+      await loadSectionsByGrade(parseInt(formStudent.grado.value || '7', 10), formStudent.seccion);
 
       await loadStudents();
       await loadEnrollments();
@@ -732,26 +790,7 @@ include __DIR__ . '/components/header.php';
     }
 
     if (kind === 'edit') {
-      try {
-        const j = await api('students_get', { method: 'GET', params: { id } });
-        const s = j.data;
-        const modal = document.getElementById('modalEdit');
-        const f = document.getElementById('formEditStudent');
-        document.getElementById('msgEdit').textContent = '';
-
-        f.id.value = s.id;
-        f.nombre.value = s.nombre || '';
-        f.cedula.value = s.cedula || '';
-        f.fecha_nacimiento.value = s.fecha_nacimiento || '';
-        f.grado.value = s.grado || 7;
-        f.seccion.value = s.seccion || '';
-        f.encargado.value = s.encargado || '';
-        f.telefono_encargado.value = s.telefono_encargado || '';
-
-        modal.style.display = 'block';
-      } catch (err) {
-        alert(err?.json?.message || 'Error abriendo edición');
-      }
+      await openStudentEditModal(id);
     }
   });
 
@@ -767,6 +806,10 @@ include __DIR__ . '/components/header.php';
 
     const data = {
       id: f.id.value,
+      nombre: f.nombre.value,
+      apellidos: f.apellidos.value,
+      cedula: f.cedula.value,
+      fecha_nacimiento: f.fecha_nacimiento.value,
       grado: f.grado.value,
       seccion: f.seccion.value,
       encargado: f.encargado.value,
@@ -781,6 +824,14 @@ include __DIR__ . '/components/header.php';
       await loadCapacity();
     } catch (err) {
       ms.textContent = err?.json?.message || 'Error guardando';
+    }
+  });
+
+  tblEnr.addEventListener('click', async (e) => {
+    const kind = e.target.getAttribute('data-kind');
+    if (kind === 'edit_enr_student') {
+      const studentId = e.target.getAttribute('data-student-id');
+      if (studentId) await openStudentEditModal(studentId);
     }
   });
 
@@ -920,7 +971,21 @@ include __DIR__ . '/components/header.php';
     });
   }
 
+
+  if (formStudent?.grado) {
+    formStudent.grado.addEventListener('change', () => {
+      loadSectionsByGrade(parseInt(formStudent.grado.value || '7', 10), formStudent.seccion);
+    });
+  }
+
+  if (formEditStudent?.grado) {
+    formEditStudent.grado.addEventListener('change', () => {
+      loadSectionsByGrade(parseInt(formEditStudent.grado.value || '7', 10), formEditStudent.seccion);
+    });
+  }
+
   (async () => {
+    await loadSectionsByGrade(parseInt(formStudent.grado.value || '7', 10), formStudent.seccion);
     await loadUsers();
     await loadStudents();
     await loadEnrollments();

@@ -17,6 +17,8 @@ require_once __DIR__ . '/app/controllers/QuizController.php';
 require_once __DIR__ . '/app/controllers/MicrosoftOAuthController.php';
 require_once __DIR__ . '/app/controllers/ForumController.php';
 require_once __DIR__ . '/app/controllers/GamificationController.php';
+require_once __DIR__ . '/app/controllers/AttendanceController.php';
+require_once __DIR__ . '/app/controllers/AcademicManagementController.php';
 
 $action = $_GET['action'] ?? '';
 
@@ -31,6 +33,8 @@ $qz = new QuizController();
 $ms = new MicrosoftOAuthController();
 $forum = new ForumController();
 $gamification = new GamificationController();
+$attendance = new AttendanceController();
+$academic = new AcademicManagementController();
 
 try {
     switch ($action) {
@@ -88,7 +92,7 @@ try {
         case 'sections_delete': $vc->deleteSection(); break;
         case 'sections_updateTipo': $vc->updateSectionTipo(); break;
 
-        // Recursos (movido a AssignementResourseController)
+        // Recursos 
         case 'resources_upload': $ar->uploadResource(); break;
         case 'resources_list': $ar->listResources(); break;
         case 'resources_delete': $ar->deleteResource(); break;
@@ -96,7 +100,7 @@ try {
 
 
 
-        // Tareas / Entregas / Notas / Grupos (movido a AssignementResourseController)
+        // Tareas / Entregas / Notas / Grupos 
         case 'assignments_upsert': $ar->upsertAssignment(); break;
         case 'assignments_getBySection': $ar->getAssignmentBySection(); break;
 
@@ -112,7 +116,7 @@ try {
         case 'groups_list': $ar->listGroups(); break;
         case 'groups_setMembers': $ar->setGroupMembers(); break;
 
-        // Quiz / Exámenes (separado)
+        // Quiz / Exámenes 
         case 'quizzes_upsert': $qz->upsertQuiz(); break;
         case 'quizzes_getBySection': $qz->getQuizBySection(); break;
 
@@ -140,6 +144,25 @@ try {
         case 'forum_comments_create': $forum->createComment(); break;
         case 'forum_comments_delete': $forum->deleteComment(); break;
         case 'forum_comments_report': $forum->reportComment(); break;
+
+        // Asistencia
+        case 'attendance_sections': $attendance->listSections(); break;
+        case 'attendance_sections_by_grade': $attendance->sectionsByGrade(); break;
+        case 'attendance_assign_teacher': $attendance->assignTeacher(); break;
+        case 'attendance_section_roster': $attendance->getSectionRoster(); break;
+        case 'attendance_save': $attendance->saveAttendance(); break;
+        case 'attendance_history': $attendance->history(); break;
+        case 'attendance_justify': $attendance->justify(); break;
+
+        // Gestión Académica
+        case 'academic_sections': $academic->listSections(); break;
+        case 'academic_section_students': $academic->listSectionStudents(); break;
+        case 'academic_student_years': $academic->studentYears(); break;
+        case 'academic_student_subjects': $academic->studentSubjects(); break;
+        case 'academic_subject_detail': $academic->subjectDetail(); break;
+        case 'academic_rubric_save': $academic->rubricSave(); break;
+        case 'academic_rubric_delete': $academic->rubricDelete(); break;
+        case 'academic_grades_save': $academic->gradesSave(); break;
 
         // Gamificación
         case 'gamification_dashboard': $gamification->dashboard(); break;

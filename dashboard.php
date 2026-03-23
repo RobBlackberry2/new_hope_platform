@@ -27,6 +27,13 @@ $rol = $u['rol'] ?? '';
 </section>
 <?php endif; ?>
 
+<?php if ($rol === 'DOCENTE'): ?>
+<section class="grid2">
+  <a class="card" href="<?= $base_url ?>/assistance.php"><h3>Asistencia</h3><p class="muted">Tomar asistencia por sección y fecha.</p></a>
+  <a class="card" href="<?= $base_url ?>/elearning.php"><h3>E-Learning</h3><p class="muted">Acceso rápido a los cursos y contenidos.</p></a>
+</section>
+<?php endif; ?>
+
 <section class="card">
   <h3>E-Learning</h3>
   <p class="muted">Cursos, secciones, archivos (subidas). Más adelante: evaluaciones, foros y gamificación.</p>

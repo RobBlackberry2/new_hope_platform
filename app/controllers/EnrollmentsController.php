@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../models/Student.php';
 require_once __DIR__ . '/../models/Enrollment.php';
+require_once __DIR__ . '/../models/Section.php';
 require_once __DIR__ . '/../helpers/auth.php';
 
 class EnrollmentsController
@@ -13,16 +14,31 @@ class EnrollmentsController
         $data = [
             'user_id' => $_POST['user_id'] ?? null,
             'cedula' => $_POST['cedula'] ?? null,
-            'nombre' => $_POST['nombre'] ?? '',
+            'nombre' => trim((string)($_POST['nombre'] ?? '')),
+            'apellidos' => trim((string)($_POST['apellidos'] ?? '')),
             'fecha_nacimiento' => $_POST['fecha_nacimiento'] ?? null,
             'grado' => $_POST['grado'] ?? 7,
             'seccion' => $_POST['seccion'] ?? null,
             'encargado' => $_POST['encargado'] ?? null,
             'telefono_encargado' => $_POST['telefono_encargado'] ?? null,
         ];
-        if (!$data['nombre']) {
+        if (!$data['nombre'] || !$data['apellidos']) {
             http_response_code(400);
-            echo json_encode(['status' => 'error', 'message' => 'Nombre es requerido']);
+            echo json_encode(['status' => 'error', 'message' => 'Nombre y apellidos son requeridos']);
+            return;
+        }
+        if ($data['nombre'] === '' || $data['apellidos'] === '') {
+            http_response_code(400);
+            echo json_encode(['status' => 'error', 'message' => 'Nombre y apellidos son requeridos']);
+            return;
+        }
+
+        $grado = (int) ($data['grado'] ?? 0);
+        $seccion = trim((string) ($data['seccion'] ?? ''));
+        $sectionModel = new Section();
+        if ($grado < 7 || $grado > 11 || $seccion === '' || !$sectionModel->existsForGrade($seccion, $grado)) {
+            http_response_code(400);
+            echo json_encode(['status' => 'error', 'message' => 'La sección seleccionada no corresponde al grado del estudiante']);
             return;
         }
         $id = $model->create($data);
@@ -65,9 +81,10 @@ class EnrollmentsController
 
         // NO editables: se preservan
         $data = [
-            'cedula' => $current['cedula'],
-            'nombre' => $current['nombre'],
-            'fecha_nacimiento' => $current['fecha_nacimiento'],
+            'cedula' => trim((string)($_POST['cedula'] ?? $current['cedula'])),
+            'nombre' => trim((string)($_POST['nombre'] ?? $current['nombre'])),
+            'apellidos' => trim((string)($_POST['apellidos'] ?? ($current['apellidos'] ?? ''))),
+            'fecha_nacimiento' => $_POST['fecha_nacimiento'] ?? $current['fecha_nacimiento'],
 
             // Editables: se toman del POST
             'grado' => $_POST['grado'] ?? $current['grado'],
@@ -75,6 +92,15 @@ class EnrollmentsController
             'encargado' => $_POST['encargado'] ?? $current['encargado'],
             'telefono_encargado' => $_POST['telefono_encargado'] ?? $current['telefono_encargado'],
         ];
+
+        $grado = (int) ($data['grado'] ?? 0);
+        $seccion = trim((string) ($data['seccion'] ?? ''));
+        $sectionModel = new Section();
+        if ($grado < 7 || $grado > 11 || $seccion === '' || !$sectionModel->existsForGrade($seccion, $grado)) {
+            http_response_code(400);
+            echo json_encode(['status' => 'error', 'message' => 'La sección seleccionada no corresponde al grado del estudiante']);
+            return;
+        }
 
         $ok = $model->update($id, $data);
         if ($ok)

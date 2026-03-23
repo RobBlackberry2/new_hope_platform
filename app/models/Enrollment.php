@@ -25,7 +25,7 @@ class Enrollment
         $where = $include_archived
             ? ''
             : ' WHERE e.archived_at IS NULL AND s.archived_at IS NULL';
-        $sql = 'SELECT e.*, s.nombre AS student_nombre, s.grado, s.seccion, s.archived_at AS student_archived_at
+        $sql = 'SELECT e.*, TRIM(CONCAT(s.nombre, " ", COALESCE(s.apellidos, ""))) AS student_nombre, s.grado, s.seccion, s.archived_at AS student_archived_at
 '
             . 'FROM enrollments e
 '
