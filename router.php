@@ -40,9 +40,11 @@ try {
     switch ($action) {
         // Auth
         case 'login': $auth->login(); break;
-        case 'register': $auth->register(); break;
-        case 'me': $auth->me(); break;
-        case 'logout': $auth->logout(); break;
+case 'register': $auth->register(); break;
+case 'me': $auth->me(); break;
+case 'logout': $auth->logout(); break;
+case 'forgot_password': $auth->forgotPassword(); break;
+case 'reset_password': $auth->resetPassword(); break;
 
         // Gestión de usuarios (ADMIN)
         case 'users_list': $users->list(); break;

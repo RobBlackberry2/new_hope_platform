@@ -34,15 +34,19 @@ class User
         $stmt->execute();
         $row = $stmt->get_result()->fetch_assoc();
 
-        if (!$row)
+        if (!$row) {
             return null;
-        if (($row['estado'] ?? 'ACTIVO') !== 'ACTIVO')
+        }
+
+        if (($row['estado'] ?? 'ACTIVO') !== 'ACTIVO') {
             return null;
+        }
 
         if (password_verify($password, $row['password_hash'])) {
             unset($row['password_hash']);
             return $row;
         }
+
         return null;
     }
 
@@ -56,13 +60,13 @@ class User
     }
 
     public function getByUsernameRaw(string $username): ?array
-{
-    $stmt = $this->db->prepare('SELECT id, username, password_hash, nombre, correo, telefono, rol, estado FROM users WHERE username = ? LIMIT 1');
-    $stmt->bind_param('s', $username);
-    $stmt->execute();
-    $row = $stmt->get_result()->fetch_assoc();
-    return $row ?: null;
-}
+    {
+        $stmt = $this->db->prepare('SELECT id, username, password_hash, nombre, correo, telefono, rol, estado FROM users WHERE username = ? LIMIT 1');
+        $stmt->bind_param('s', $username);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+        return $row ?: null;
+    }
 
     public function list(int $limit = 200): array
     {
@@ -71,14 +75,14 @@ class User
         return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
     }
 
-        public function listForStudents(int $limit = 500): array
+    public function listForStudents(int $limit = 500): array
     {
         $limit = max(1, min(2000, $limit));
         $sql = "SELECT id, username, nombre, rol, estado
-            FROM users
-            WHERE rol = 'ESTUDIANTE'
-            ORDER BY estado ASC, nombre ASC
-            LIMIT " . (int) $limit;
+                FROM users
+                WHERE rol = 'ESTUDIANTE'
+                ORDER BY estado ASC, nombre ASC
+                LIMIT " . (int)$limit;
         $res = $this->db->query($sql);
         return $res ? $res->fetch_all(MYSQLI_ASSOC) : [];
     }
@@ -87,10 +91,10 @@ class User
     {
         $limit = max(1, min(2000, $limit));
         $sql = "SELECT id, username, nombre
-          FROM users
-          WHERE rol = 'DOCENTE'
-          ORDER BY nombre ASC
-          LIMIT " . (int) $limit;
+                FROM users
+                WHERE rol = 'DOCENTE'
+                ORDER BY nombre ASC
+                LIMIT " . (int)$limit;
         $res = $this->db->query($sql);
         return $res ? $res->fetch_all(MYSQLI_ASSOC) : [];
     }
@@ -99,10 +103,10 @@ class User
     {
         $limit = max(1, min(5000, $limit));
         $sql = "SELECT id, username, nombre, rol, estado
-            FROM users
-            WHERE estado = 'ACTIVO'
-            ORDER BY nombre ASC, username ASC
-            LIMIT " . (int) $limit;
+                FROM users
+                WHERE estado = 'ACTIVO'
+                ORDER BY nombre ASC, username ASC
+                LIMIT " . (int)$limit;
         $res = $this->db->query($sql);
         return $res ? $res->fetch_all(MYSQLI_ASSOC) : [];
     }
@@ -135,5 +139,43 @@ class User
         return (bool) $stmt->execute();
     }
 
+    public function getByCorreo(string $correo): ?array
+    {
+        $stmt = $this->db->prepare('SELECT id, username, nombre, correo, rol, estado FROM users WHERE correo = ? LIMIT 1');
+        $stmt->bind_param('s', $correo);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+        return $row ?: null;
+    }
 
+    public function saveResetToken(int $id, string $token, string $expires): bool
+    {
+        $stmt = $this->db->prepare('UPDATE users SET reset_token = ?, reset_expires_at = ? WHERE id = ?');
+        $stmt->bind_param('ssi', $token, $expires, $id);
+        return (bool) $stmt->execute();
+    }
+
+    public function getByResetToken(string $token): ?array
+    {
+        $stmt = $this->db->prepare('SELECT id, username, nombre, correo, estado, reset_token, reset_expires_at FROM users WHERE reset_token = ? LIMIT 1');
+        $stmt->bind_param('s', $token);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+        return $row ?: null;
+    }
+
+    public function updatePassword(int $id, string $password): bool
+    {
+        $hash = password_hash($password, PASSWORD_DEFAULT);
+        $stmt = $this->db->prepare('UPDATE users SET password_hash = ? WHERE id = ?');
+        $stmt->bind_param('si', $hash, $id);
+        return (bool) $stmt->execute();
+    }
+
+    public function clearResetToken(int $id): bool
+    {
+        $stmt = $this->db->prepare('UPDATE users SET reset_token = NULL, reset_expires_at = NULL WHERE id = ?');
+        $stmt->bind_param('i', $id);
+        return (bool) $stmt->execute();
+    }
 }

@@ -49,6 +49,11 @@ include __DIR__ . '/components/header.php';
     text-align: center;
     margin-top: 10px;
   }
+
+  .forgot-link {
+    text-align: center;
+    margin-top: 12px;
+  }
 </style>
 
 <section class="card">
@@ -68,6 +73,10 @@ include __DIR__ . '/components/header.php';
 
       <div class="btn-row">
         <button class="btn" type="submit">Entrar</button>
+      </div>
+
+      <div class="forgot-link">
+        <a href="<?= $base_url ?>/recuperar.php">¿Olvidó su contraseña?</a>
       </div>
 
       <div id="msg" class="muted"></div>

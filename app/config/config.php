@@ -4,7 +4,7 @@ return [
     'db' => [
         'host' => 'localhost',
         'user' => 'root',
-        'pass' => 'Riolu21.',
+        'pass' => '',
         'name' => 'new_hope_platform',
         'port' => 3306,
         'charset' => 'utf8mb4',
@@ -13,8 +13,17 @@ return [
     // El proyecto DEBE vivir en htdocs/new_hope_platform para acceder como http://localhost/new_hope_platform
     'base_url' => '/new_hope_platform',
 
-    // Para desarrollo: activa/desactiva errores
     'debug' => true,
+
+    'mail' => [
+        'host'       => 'smtp.gmail.com',
+        'port'       => 587,
+        'username'   => 'tanyr09@gmail.com',     
+        'password'   => 'uzxxejifiwpknegm',        
+        'from_email' => 'tanyr09@gmail.com',    
+        'from_name'  => 'New Hope School',         // nombre que aparecerá en el correo
+        'secure'     => 'tls',                    
+    ],
 
     'microsoft' => [
         'tenant' => 'common',
@@ -25,6 +34,3 @@ return [
         'onedrive_root' => 'Apps/NewHopePlatform'
     ],
 ];
-
-
-
