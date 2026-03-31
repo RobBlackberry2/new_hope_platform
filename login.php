@@ -76,7 +76,7 @@ include __DIR__ . '/components/header.php';
       </div>
 
       <div class="forgot-link">
-        <a href="<?= $base_url ?>/recuperar.php">¿Olvidó su contraseña?</a>
+        <a href="<?= $base_url ?>/recover.php">¿Olvidó su contraseña?</a>
       </div>
 
       <div id="msg" class="muted"></div>

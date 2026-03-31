@@ -18,13 +18,14 @@ $navClass = function(string $file) use ($current) {
     <a<?= $navClass('enrollments.php') ?> href="<?= $base_url ?>/enrollments.php">Matrículas</a>
     <a<?= $navClass('assistance.php') ?> href="<?= $base_url ?>/assistance.php">Asistencia</a>
     <a<?= $navClass('academic_management.php') ?> href="<?= $base_url ?>/academic_management.php">Gestión Académica</a>
-    <a href="#" onclick="return false;">Reportes</a>
+    <a<?= $navClass('reports.php') ?> href="<?= $base_url ?>/reports.php">Reportes</a>
     <a<?= $navClass('users.php') ?> href="<?= $base_url ?>/users.php">Gestión de usuarios</a>
   <?php endif; ?>
 
   <?php if ($rol === 'DOCENTE'): ?>
     <a<?= $navClass('assistance.php') ?> href="<?= $base_url ?>/assistance.php">Asistencia</a>
     <a<?= $navClass('academic_management.php') ?> href="<?= $base_url ?>/academic_management.php">Gestión Académica</a>
+    <a<?= $navClass('reports.php') ?> href="<?= $base_url ?>/reports.php">Reportes</a>
   <?php endif; ?>
 
   <a<?= $navClass('elearning.php') ?> href="<?= $base_url ?>/elearning.php">E-Learning</a>

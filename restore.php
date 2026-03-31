@@ -54,7 +54,13 @@ if (formReset) {
     }
 
     try {
-      const res = await api('reset_password', { data: fd, isForm: true });
+      const res = await api('reset_password', {
+        data: {
+          token: (fd.get('token') || '').toString(),
+          password: (fd.get('password') || '').toString(),
+          confirm_password: (fd.get('confirm_password') || '').toString()
+        }
+      });
       msg.textContent = res.message || 'Contraseña actualizada correctamente';
       msg.style.color = 'green';
 

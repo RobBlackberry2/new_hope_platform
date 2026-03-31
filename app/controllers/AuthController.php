@@ -5,6 +5,51 @@ require_once __DIR__ . '/../helpers/mailer.php';
 
 class AuthController
 {
+    private function requestData(): array
+    {
+        static $data = null;
+
+        if ($data !== null) {
+            return $data;
+        }
+
+        $data = $_POST;
+
+        if (!empty($data)) {
+            return $data;
+        }
+
+        $raw = file_get_contents('php://input');
+        if (!is_string($raw) || trim($raw) === '') {
+            return $data;
+        }
+
+        $json = json_decode($raw, true);
+        if (is_array($json)) {
+            $data = $json;
+            return $data;
+        }
+
+        parse_str($raw, $parsed);
+        if (is_array($parsed) && !empty($parsed)) {
+            $data = $parsed;
+        }
+
+        return $data;
+    }
+
+    private function requestValue(array $keys, string $default = ''): string
+    {
+        $data = $this->requestData();
+
+        foreach ($keys as $key) {
+            if (array_key_exists($key, $data)) {
+                return trim((string) $data[$key]);
+            }
+        }
+
+        return $default;
+    }
     public function login(): void
     {
         $username = trim((string) ($_POST['username'] ?? ''));
@@ -76,11 +121,11 @@ class AuthController
 
     public function register(): void
     {
-        $username = trim((string) ($_POST['username'] ?? ''));
-        $password = (string) ($_POST['password'] ?? '');
-        $nombre   = trim((string) ($_POST['nombre'] ?? ''));
-        $correo   = trim((string) ($_POST['correo'] ?? ''));
-        $telefono = trim((string) ($_POST['telefono'] ?? ''));
+        $username = $this->requestValue(['username', 'user', 'usuario']);
+        $password = $this->requestValue(['password', 'contrasena', 'clave']);
+        $nombre   = $this->requestValue(['nombre', 'name', 'full_name']);
+        $correo   = $this->requestValue(['correo', 'email']);
+        $telefono = $this->requestValue(['telefono', 'phone']);
 
         if ($username === '' || $password === '' || $nombre === '' || $correo === '') {
             http_response_code(400);
@@ -201,7 +246,7 @@ class AuthController
         $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
         $baseUrl = rtrim((string) ($config['base_url'] ?? ''), '/');
 
-        $resetLink = $scheme . '://' . $host . $baseUrl . '/restablecer.php?token=' . urlencode($token);
+        $resetLink = $scheme . '://' . $host . $baseUrl . '/restore.php?token=' . urlencode($token);
 
         $nombreUsuario = (string) ($user['nombre'] ?? 'usuario');
         $nombreSeguro = htmlspecialchars($nombreUsuario, ENT_QUOTES, 'UTF-8');
@@ -330,9 +375,9 @@ Este es un mensaje automático. Por favor, no responda este correo.";
 
     public function resetPassword(): void
     {
-        $token = trim((string) ($_POST['token'] ?? ''));
-        $password = (string) ($_POST['password'] ?? '');
-        $confirmPassword = (string) ($_POST['confirm_password'] ?? '');
+        $token = $this->requestValue(['token']);
+        $password = $this->requestValue(['password', 'contrasena', 'clave']);
+        $confirmPassword = $this->requestValue(['confirm_password', 'confirmPassword', 'confirmar_password']);
 
         if ($token === '' || $password === '' || $confirmPassword === '') {
             http_response_code(400);
@@ -392,7 +437,15 @@ Este es un mensaje automático. Por favor, no responda este correo.";
             return;
         }
 
-        $userModel->clearResetToken((int) $user['id']);
+        $updatedHash = $userModel->getPasswordHashById((int) $user['id']);
+        if (!$updatedHash || !password_verify($password, $updatedHash)) {
+            http_response_code(500);
+            echo json_encode([
+                'status' => 'error',
+                'message' => 'La contraseña no pudo verificarse después de la actualización'
+            ]);
+            return;
+        }
 
         echo json_encode([
             'status' => 'success',

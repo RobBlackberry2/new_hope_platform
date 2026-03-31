@@ -1,7 +1,7 @@
 <?php
 date_default_timezone_set('America/Costa_Rica');
 $action = $_GET['action'] ?? '';
-$downloadActions = ['resources_download','submission_files_download'];
+$downloadActions = ['resources_download','submission_files_download','reports_generate_pdf'];
 if (!in_array($action, $downloadActions, true)) {
   header('Content-Type: application/json; charset=utf-8');
 }
@@ -19,6 +19,7 @@ require_once __DIR__ . '/app/controllers/ForumController.php';
 require_once __DIR__ . '/app/controllers/GamificationController.php';
 require_once __DIR__ . '/app/controllers/AttendanceController.php';
 require_once __DIR__ . '/app/controllers/AcademicManagementController.php';
+require_once __DIR__ . '/app/controllers/ReportsController.php';
 
 $action = $_GET['action'] ?? '';
 
@@ -35,6 +36,7 @@ $forum = new ForumController();
 $gamification = new GamificationController();
 $attendance = new AttendanceController();
 $academic = new AcademicManagementController();
+$reports = new ReportsController();
 
 try {
     switch ($action) {
@@ -165,6 +167,15 @@ case 'reset_password': $auth->resetPassword(); break;
         case 'academic_rubric_save': $academic->rubricSave(); break;
         case 'academic_rubric_delete': $academic->rubricDelete(); break;
         case 'academic_grades_save': $academic->gradesSave(); break;
+
+        // Reportes
+        case 'reports_sections': $reports->sections(); break;
+        case 'reports_list': $reports->list(); break;
+        case 'reports_create': $reports->create(); break;
+        case 'reports_update': $reports->update(); break;
+        case 'reports_delete': $reports->delete(); break;
+        case 'reports_preview': $reports->preview(); break;
+        case 'reports_generate_pdf': $reports->generatePdf(); break;
 
         // Gamificación
         case 'gamification_dashboard': $gamification->dashboard(); break;

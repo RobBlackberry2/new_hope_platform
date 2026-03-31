@@ -93,12 +93,21 @@ include __DIR__ . '/components/header.php';
 <script>
 document.getElementById('formCreate').addEventListener('submit', async (e) => {
   e.preventDefault();
-  const fd = new FormData(e.target);
+  const form = e.target;
+  const fd = new FormData(form);
   const msgCreate = document.getElementById('msgCreate');
   msgCreate.textContent = '';
 
   try {
-    await api('register', { data: fd, isForm: true });
+    await api('register', {
+      data: {
+        username: (fd.get('username') || '').toString().trim(),
+        password: (fd.get('password') || '').toString(),
+        nombre: (fd.get('nombre') || '').toString().trim(),
+        correo: (fd.get('correo') || '').toString().trim(),
+        telefono: (fd.get('telefono') || '').toString().trim()
+      }
+    });
     msgCreate.textContent = 'Usuario creado. Ahora inicia sesión.';
     e.target.reset();
 

@@ -19,10 +19,25 @@ class User
         return $res && $res->num_rows > 0;
     }
 
+    public function correoExists(string $correo): bool
+    {
+        $stmt = $this->db->prepare('SELECT id FROM users WHERE correo = ? LIMIT 1');
+        if (!$stmt) {
+            throw new RuntimeException('No se pudo validar el correo: ' . $this->db->error);
+        }
+        $stmt->bind_param('s', $correo);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        return $res && $res->num_rows > 0;
+    }
+
     public function create(string $username, string $password, string $nombre, string $correo, ?string $telefono, string $rol = 'ESTUDIANTE'): bool
     {
         $hash = password_hash($password, PASSWORD_DEFAULT);
         $stmt = $this->db->prepare('INSERT INTO users (username, password_hash, nombre, correo, telefono, rol) VALUES (?,?,?,?,?,?)');
+        if (!$stmt) {
+            throw new RuntimeException('No se pudo preparar la creación del usuario: ' . $this->db->error);
+        }
         $stmt->bind_param('ssssss', $username, $hash, $nombre, $correo, $telefono, $rol);
         return (bool) $stmt->execute();
     }
@@ -167,14 +182,32 @@ class User
     public function updatePassword(int $id, string $password): bool
     {
         $hash = password_hash($password, PASSWORD_DEFAULT);
-        $stmt = $this->db->prepare('UPDATE users SET password_hash = ? WHERE id = ?');
+        $stmt = $this->db->prepare('UPDATE users SET password_hash = ?, reset_token = NULL, reset_expires_at = NULL WHERE id = ?');
+        if (!$stmt) {
+            throw new RuntimeException('No se pudo preparar la actualización de contraseña: ' . $this->db->error);
+        }
         $stmt->bind_param('si', $hash, $id);
         return (bool) $stmt->execute();
+    }
+
+    public function getPasswordHashById(int $id): ?string
+    {
+        $stmt = $this->db->prepare('SELECT password_hash FROM users WHERE id = ? LIMIT 1');
+        if (!$stmt) {
+            throw new RuntimeException('No se pudo validar la contraseña actualizada: ' . $this->db->error);
+        }
+        $stmt->bind_param('i', $id);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+        return $row['password_hash'] ?? null;
     }
 
     public function clearResetToken(int $id): bool
     {
         $stmt = $this->db->prepare('UPDATE users SET reset_token = NULL, reset_expires_at = NULL WHERE id = ?');
+        if (!$stmt) {
+            throw new RuntimeException('No se pudo limpiar el token de recuperación: ' . $this->db->error);
+        }
         $stmt->bind_param('i', $id);
         return (bool) $stmt->execute();
     }

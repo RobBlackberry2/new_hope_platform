@@ -13,10 +13,10 @@ $rol = $u['rol'] ?? '';
     <p class="muted">Rol: <strong><?= htmlspecialchars($rol) ?></strong></p>
     <p class="muted">Página principal</p>
   </div>
-  <div class="card">
+  <a class="card" href="<?= $base_url ?>/reports.php" style="display:block; text-decoration:none; color:inherit;">
     <h3>Reportes</h3>
-    <div class="muted">Seccion destinada para los Reportes</div>
-  </div>
+    <div class="muted">Genera reportes académicos y administrativos en PDF.</div>
+  </a>
 </section>
 
 <?php if ($rol === 'ADMIN'): ?>
